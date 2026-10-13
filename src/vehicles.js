@@ -5,54 +5,9 @@ import { clamp, pick } from './util.js';
 import { WORLD_HALF } from './world/world.js';
 import { audio } from './audio.js';
 import { explode } from './projectiles.js';
+import { buildCar } from './models/cars.js';
 
-const CAR_COLORS = [0xb03030, 0x3060b0, 0xd0d0d0, 0x202020, 0x2f7a3a, 0xc9a227, 0x6a3d9a, 0x8a8f96];
-const wheelGeo = new THREE.CylinderGeometry(0.42, 0.42, 0.3, 14).rotateZ(Math.PI / 2);
-const wheelMat = new THREE.MeshLambertMaterial({ color: 0x151515 });
-const glassMat = new THREE.MeshLambertMaterial({ color: 0x1c2630 });
-const headMat = new THREE.MeshBasicMaterial({ color: 0xfff2c0 });
-const tailMat = new THREE.MeshBasicMaterial({ color: 0xff2020 });
-const boxGeo = new THREE.BoxGeometry(1, 1, 1);
-
-function bx(g, mat, w, h, d, x, y, z) {
-  const m = new THREE.Mesh(boxGeo, mat);
-  m.scale.set(w, h, d);
-  m.position.set(x, y, z);
-  g.add(m);
-  return m;
-}
-
-function buildCarMesh(color, truck) {
-  const g = new THREE.Group();
-  const body = new THREE.MeshLambertMaterial({ color });
-  bx(g, body, 2.0, 0.7, 4.3, 0, 0.75, 0);
-  if (truck) {
-    bx(g, body, 1.9, 0.75, 1.6, 0, 1.45, -0.7);
-    bx(g, glassMat, 1.7, 0.45, 0.05, 0, 1.55, -1.52);
-    bx(g, body, 2.0, 0.4, 0.08, 0, 1.3, 2.1);
-    bx(g, body, 0.08, 0.4, 2.2, -0.96, 1.3, 1.0);
-    bx(g, body, 0.08, 0.4, 2.2, 0.96, 1.3, 1.0);
-  } else {
-    bx(g, body, 1.8, 0.6, 2.2, 0, 1.38, 0.25);
-    bx(g, glassMat, 1.65, 0.45, 0.05, 0, 1.4, -0.87);
-    bx(g, glassMat, 1.85, 0.4, 1.8, 0, 1.42, 0.25);
-  }
-  bx(g, headMat, 0.4, 0.15, 0.05, -0.6, 0.85, -2.16);
-  bx(g, headMat, 0.4, 0.15, 0.05, 0.6, 0.85, -2.16);
-  bx(g, tailMat, 0.4, 0.15, 0.05, -0.6, 0.85, 2.16);
-  bx(g, tailMat, 0.4, 0.15, 0.05, 0.6, 0.85, 2.16);
-  const wheels = [];
-  for (const [x, z] of [[-0.95, -1.4], [0.95, -1.4], [-0.95, 1.4], [0.95, 1.4]]) {
-    const pivot = new THREE.Group();
-    pivot.position.set(x, 0.42, z);
-    const w = new THREE.Mesh(wheelGeo, wheelMat);
-    pivot.add(w);
-    g.add(pivot);
-    wheels.push({ pivot, w, front: z < 0 });
-  }
-  return { group: g, body, wheels };
-}
-
+const CAR_COLORS = [0x9a1a1a, 0x1a3a7a, 0xe8e8e8, 0x1a1a1c, 0x2a5a3a, 0xd8a020, 0x5a6a7a, 0x8a8f96, 0x6a2a1a];
 export class Car {
   constructor(x, z, heading, opts = {}) {
     this.pos = new THREE.Vector3(x, 0, z);
@@ -63,7 +18,7 @@ export class Car {
     this.health = this.maxHealth;
     this.tag = opts.tag || null;
     this.destroyed = false;
-    const m = buildCarMesh(opts.color ?? pick(CAR_COLORS), !!opts.truck);
+    const m = buildCar(opts.color ?? pick(CAR_COLORS), !!opts.truck);
     this.mesh = m.group;
     this.bodyMat = m.body;
     this.wheels = m.wheels;

@@ -80,7 +80,7 @@ function buildRocks(group, world, pts, rnd) {
   pts.forEach((p, i) => {
     const r = 0.4 + rnd() * rnd() * 2.6, sy = r * (0.45 + rnd() * 0.35);
     place(mesh, i, p.x, sy * 0.35, p.z, r * (0.9 + rnd() * 0.4), sy, r * (0.9 + rnd() * 0.4), rnd() * 6.28);
-    mesh.setColorAt(i, col.setHSL(0.08, 0.06 + rnd() * 0.06, 0.32 + rnd() * 0.14));
+    mesh.setColorAt(i, col.setHSL(0.09, 0.12 + rnd() * 0.08, 0.22 + rnd() * 0.12));
     if (r > 0.7) world.addBox(p.x - r * 0.7, 0, p.z - r * 0.7, p.x + r * 0.7, sy * 1.2, p.z + r * 0.7, 'rock');
   });
   group.add(mesh);

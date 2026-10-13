@@ -3,6 +3,7 @@ import { game, emit, removeFrom } from './game.js';
 import { rand, pick } from './util.js';
 import { audio } from './audio.js';
 import { damagePlayerOrCar } from './projectiles.js';
+import { buildAlienMesh } from './models/aliens.js';
 
 export const ALIEN_TYPES = {
   drone: { name: 'Drone', hp: 30, speed: 3.5, dmg: 6, range: 1.8, cd: 1.0, radius: 0.5, height: 2, hitR: 0.6, hitY: 0, cores: 2, aggro: 45, float: 1.5, color: 0x6a4c93 },
@@ -13,124 +14,6 @@ export const ALIEN_TYPES = {
   flyer: { name: 'Flyer', hp: 70, speed: 10, dmg: 9, range: 40, cd: 1.6, radius: 0.8, height: 1, hitR: 1.0, hitY: 0, cores: 5, aggro: 70, fly: 9, color: 0x8a5a2b },
   overseer: { name: 'The Overseer', hp: 6000, speed: 2.5, dmg: 14, range: 70, cd: 2.4, radius: 4, height: 6, hitR: 4.5, hitY: 0, cores: 300, aggro: 140, fly: 8, boss: true, color: 0x40204f },
 };
-
-const G = {
-  sphere: new THREE.SphereGeometry(1, 16, 12),
-  box: new THREE.BoxGeometry(1, 1, 1),
-  cyl: new THREE.CylinderGeometry(1, 1, 1, 10),
-  cone: new THREE.ConeGeometry(1, 1, 10),
-  torus: new THREE.TorusGeometry(1, 0.12, 6, 20),
-};
-const EYE_G = new THREE.MeshBasicMaterial({ color: 0x9dff4a });
-const EYE_R = new THREE.MeshBasicMaterial({ color: 0xff3030 });
-const EYE_C = new THREE.MeshBasicMaterial({ color: 0x6cf4ff });
-const ACID = new THREE.MeshBasicMaterial({ color: 0x9dff2a });
-const darkMat = c => new THREE.MeshLambertMaterial({ color: new THREE.Color(c).multiplyScalar(0.6) });
-
-function part(g, geo, mat, sx, sy, sz, x, y, z) {
-  const m = new THREE.Mesh(geo, mat);
-  m.castShadow = !mat.isMeshBasicMaterial;
-  m.scale.set(sx, sy, sz);
-  m.position.set(x, y, z);
-  g.add(m);
-  return m;
-}
-
-function buildMesh(type, def) {
-  const g = new THREE.Group();
-  const body = new THREE.MeshLambertMaterial({ color: def.color, emissive: 0x000000 });
-  const anim = {};
-  switch (type) {
-    case 'drone':
-      part(g, G.sphere, body, 0.45, 0.45, 0.45, 0, 0, 0);
-      anim.ring = part(g, G.torus, darkMat(def.color), 0.65, 0.65, 0.65, 0, 0, 0);
-      anim.ring.rotation.x = Math.PI / 2;
-      part(g, G.sphere, EYE_G, 0.15, 0.15, 0.15, 0, 0.05, -0.38);
-      break;
-    case 'crawler': {
-      part(g, G.sphere, body, 0.55, 0.35, 0.85, 0, 0.55, 0);
-      part(g, G.sphere, body, 0.32, 0.28, 0.32, 0, 0.6, -0.8);
-      part(g, G.sphere, EYE_R, 0.07, 0.07, 0.07, -0.13, 0.68, -1.08);
-      part(g, G.sphere, EYE_R, 0.07, 0.07, 0.07, 0.13, 0.68, -1.08);
-      const lm = darkMat(def.color);
-      anim.legs = [];
-      for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
-        const leg = part(g, G.box, lm, 0.1, 0.7, 0.1, sx * 0.55, 0.3, sz * 0.4);
-        leg.rotation.z = sx * 0.6;
-        anim.legs.push(leg);
-      }
-      break;
-    }
-    case 'spitter':
-      part(g, G.cyl, body, 0.45, 1.5, 0.45, 0, 0.75, 0);
-      part(g, G.sphere, body, 0.48, 0.48, 0.48, 0, 1.75, 0);
-      anim.sac = part(g, G.sphere, ACID, 0.35, 0.4, 0.35, 0, 1.7, 0.35);
-      for (let i = -1; i <= 1; i++) part(g, G.sphere, EYE_G, 0.07, 0.07, 0.07, i * 0.15, 1.85, -0.43);
-      break;
-    case 'brute': {
-      const dm = darkMat(def.color);
-      part(g, G.box, body, 1.6, 1.4, 1.0, 0, 1.9, 0);
-      anim.legs = [part(g, G.box, dm, 0.45, 1.2, 0.5, -0.45, 0.6, 0), part(g, G.box, dm, 0.45, 1.2, 0.5, 0.45, 0.6, 0)];
-      anim.arms = [part(g, G.box, body, 0.45, 1.5, 0.45, -1.05, 1.6, 0), part(g, G.box, body, 0.45, 1.5, 0.45, 1.05, 1.6, 0)];
-      part(g, G.box, dm, 0.6, 0.5, 0.6, 0, 2.85, -0.2);
-      part(g, G.sphere, EYE_R, 0.08, 0.08, 0.08, -0.15, 2.9, -0.52);
-      part(g, G.sphere, EYE_R, 0.08, 0.08, 0.08, 0.15, 2.9, -0.52);
-      break;
-    }
-    case 'stalker':
-      body.transparent = true;
-      body.opacity = 0.25;
-      part(g, G.cyl, body, 0.25, 1.2, 0.25, 0, 1.3, 0);
-      part(g, G.sphere, body, 0.26, 0.32, 0.26, 0, 2.1, 0);
-      part(g, G.cyl, body, 0.08, 1.0, 0.08, -0.15, 0.5, 0);
-      part(g, G.cyl, body, 0.08, 1.0, 0.08, 0.15, 0.5, 0);
-      anim.arms = [part(g, G.cyl, body, 0.06, 1.3, 0.06, -0.38, 1.3, -0.2), part(g, G.cyl, body, 0.06, 1.3, 0.06, 0.38, 1.3, -0.2)];
-      anim.arms[0].rotation.x = anim.arms[1].rotation.x = 0.5;
-      part(g, G.sphere, EYE_C, 0.06, 0.04, 0.06, -0.1, 2.15, -0.23);
-      part(g, G.sphere, EYE_C, 0.06, 0.04, 0.06, 0.1, 2.15, -0.23);
-      break;
-    case 'flyer': {
-      part(g, G.sphere, body, 0.5, 0.4, 1.0, 0, 0, 0);
-      const tail = part(g, G.cone, darkMat(def.color), 0.25, 0.9, 0.25, 0, 0, 1.2);
-      tail.rotation.x = Math.PI / 2;
-      const wm = new THREE.MeshLambertMaterial({ color: 0xc9a06a, side: THREE.DoubleSide });
-      anim.wings = [];
-      for (const s of [-1, 1]) {
-        const pivot = new THREE.Group();
-        pivot.position.set(s * 0.4, 0.1, 0);
-        part(pivot, G.box, wm, 2.2, 0.05, 0.9, s * 1.1, 0, 0);
-        g.add(pivot);
-        anim.wings.push({ pivot, s });
-      }
-      part(g, G.sphere, EYE_R, 0.09, 0.09, 0.09, -0.18, 0.12, -0.9);
-      part(g, G.sphere, EYE_R, 0.09, 0.09, 0.09, 0.18, 0.12, -0.9);
-      break;
-    }
-    case 'overseer': {
-      part(g, G.sphere, body, 3, 2.6, 3, 0, 0, 0);
-      part(g, G.sphere, new THREE.MeshLambertMaterial({ color: 0xeeeeee }), 1.3, 1.3, 1.3, 0, 0.3, -2.3);
-      anim.eye = part(g, G.sphere, EYE_R, 0.55, 0.55, 0.55, 0, 0.3, -3.4);
-      const tm = darkMat(def.color);
-      anim.tentacles = [];
-      for (let i = 0; i < 8; i++) {
-        const a = (i / 8) * Math.PI * 2;
-        const pivot = new THREE.Group();
-        pivot.position.set(Math.cos(a) * 1.8, -1.8, Math.sin(a) * 1.8);
-        part(pivot, G.cyl, tm, 0.25, 4, 0.25, 0, -2, 0);
-        g.add(pivot);
-        anim.tentacles.push({ pivot, a });
-      }
-      for (let i = 0; i < 6; i++) {
-        const a = (i / 6) * Math.PI * 2;
-        const sp = part(g, G.cone, EYE_G, 0.3, 1.6, 0.3, Math.cos(a) * 1.6, 2.6, Math.sin(a) * 1.6);
-        sp.rotation.set(Math.sin(a) * 0.4, 0, -Math.cos(a) * 0.4);
-      }
-      anim.shield = part(g, G.sphere, new THREE.MeshBasicMaterial({ color: 0x66aaff, transparent: true, opacity: 0.22, depthWrite: false }), 5.5, 5.5, 5.5, 0, 0, 0);
-      break;
-    }
-  }
-  return { group: g, body, anim };
-}
 
 export class Alien {
   constructor(type, x, z, level, opts = {}) {
@@ -143,7 +26,7 @@ export class Alien {
     this.dmgMult = 1 + 0.25 * (level - 1);
     this.pos = new THREE.Vector3(x, def.fly || def.float || 0, z);
     this.vel = new THREE.Vector3();
-    const m = buildMesh(type, def);
+    const m = buildAlienMesh(type, def);
     this.mesh = m.group;
     this.body = m.body;
     this.anim = m.anim;

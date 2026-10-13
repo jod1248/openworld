@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { game } from './game.js';
+import { buildPerson, animatePerson } from './models/people.js';
 
 function markerTexture(ch, color) {
   const c = document.createElement('canvas');
@@ -18,16 +19,6 @@ function markerTexture(ch, color) {
   return t;
 }
 let TEX = null;
-const boxGeo = new THREE.BoxGeometry(1, 1, 1);
-const headGeo = new THREE.SphereGeometry(0.2, 12, 10);
-
-function limb(g, mat, w, h, d, x, y, z) {
-  const m = new THREE.Mesh(boxGeo, mat);
-  m.scale.set(w, h, d);
-  m.position.set(x, y, z);
-  g.add(m);
-  return m;
-}
 
 export class NPC {
   constructor(o) {
@@ -38,21 +29,12 @@ export class NPC {
     this.quests = o.quests || [];
     this.pos = new THREE.Vector3(o.x, 0, o.z);
     this.lineIdx = 0;
-    const g = new THREE.Group();
-    const shirt = new THREE.MeshLambertMaterial({ color: o.color ?? 0x556b2f });
-    const pants = new THREE.MeshLambertMaterial({ color: o.pants ?? 0x2d2d35 });
-    const skin = new THREE.MeshLambertMaterial({ color: o.skin ?? 0xc89a74 });
-    limb(g, pants, 0.18, 0.85, 0.2, -0.12, 0.43, 0);
-    limb(g, pants, 0.18, 0.85, 0.2, 0.12, 0.43, 0);
-    limb(g, shirt, 0.5, 0.65, 0.28, 0, 1.18, 0);
-    limb(g, shirt, 0.14, 0.6, 0.16, -0.33, 1.15, 0);
-    limb(g, shirt, 0.14, 0.6, 0.16, 0.33, 1.15, 0);
-    const head = new THREE.Mesh(headGeo, skin);
-    head.position.y = 1.72;
-    g.add(head);
-    if (o.hat) limb(g, new THREE.MeshLambertMaterial({ color: o.hat }), 0.42, 0.12, 0.42, 0, 1.92, 0);
+    const person = buildPerson(o);
+    const g = person.group;
+    this.anim = person.anim;
+    this.t = Math.random() * 10;
     g.position.copy(this.pos);
-    g.rotation.y = o.facing ?? 0;
+    g.rotation.y = (o.facing ?? 0) + Math.PI;
     game.scene.add(g);
     this.mesh = g;
     this.marker = new THREE.Sprite(new THREE.SpriteMaterial({ map: TEX['!'], depthWrite: false }));
@@ -72,10 +54,12 @@ export class NPC {
   nextLine() { return this.lines[this.lineIdx++ % this.lines.length]; }
 
   update(dt) {
+    this.t += dt;
+    animatePerson(this.anim, this.t);
     const P = game.player;
     const dx = P.pos.x - this.pos.x, dz = P.pos.z - this.pos.z;
     if (dx * dx + dz * dz < 144) {
-      const target = Math.atan2(-dx, -dz) + Math.PI;
+      const target = Math.atan2(-dx, -dz);
       let d = target - this.mesh.rotation.y;
       d = Math.atan2(Math.sin(d), Math.cos(d));
       this.mesh.rotation.y += d * Math.min(1, dt * 5);
@@ -102,7 +86,7 @@ export class NPCManager {
     const R = game.cities.find(c => c.id === 'ridgeport');
     const H = game.cities.find(c => c.id === 'haven');
     this.add({
-      id: 'okafor', name: 'Sgt. Okafor', x: H.x + 4, z: H.z + 7, color: 0x4b5b3a, hat: 0x3a4a2a, facing: Math.PI,
+      id: 'okafor', name: 'Sgt. Okafor', soldier: true, x: H.x + 4, z: H.z + 7, color: 0x4b5b3a, hat: 0x3a4a2a, facing: Math.PI,
       lines: [
         'Pick up that pistol and show me what you learned.',
         'When the drones come, keep moving. Standing still is how people get zapped.',
@@ -110,7 +94,7 @@ export class NPCManager {
       ],
     });
     this.add({
-      id: 'reyes', name: 'Captain Reyes', x: R.x - 6, z: R.z - 10, color: 0x5a6b3a, hat: 0x2d3320,
+      id: 'reyes', name: 'Captain Reyes', soldier: true, x: R.x - 6, z: R.z - 10, color: 0x5a6b3a, hat: 0x2d3320,
       quests: ['clear_square', 'outposts', 'overseer'],
       lines: ['Stay sharp out there.', 'Every town we free makes that mothership weaker.', 'Check your backpack. Upgraded guns win fights.'],
     });

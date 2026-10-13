@@ -3,6 +3,7 @@ import { game, emit } from './game.js';
 import { input } from './input.js';
 import { raySphere } from './util.js';
 import { audio } from './audio.js';
+import { buildGunModel } from './models/guns.js';
 
 export const WEAPONS = {
   pistol: { name: 'M9 Pistol', dmg: 22, interval: 0.2, mag: 12, ammo: 'light', spread: 0.012, range: 160, auto: false, reload: 1.2, recoil: 0.012, tier: 1, hint: 'Found in Haven' },
@@ -37,66 +38,8 @@ export function upgradeCost(id, level) {
   return { cores: Math.round(15 * t * (level + 1)), parts: level + 1 };
 }
 
-const matCache = {};
-const vmMat = c => (matCache[c] ||= new THREE.MeshLambertMaterial({ color: c }));
-const glowMat = c => (matCache['g' + c] ||= new THREE.MeshBasicMaterial({ color: c }));
-function box(g, w, h, d, mat, x, y, z) {
-  const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
-  m.position.set(x, y, z);
-  g.add(m);
-  return m;
-}
-
-export function buildWeaponModel(id) {
-  const g = new THREE.Group();
-  let muzzle = [0, 0, -0.3];
-  const metal = vmMat(0x2b2b2e), dark = vmMat(0x18181a), wood = vmMat(0x6b4426);
-  switch (id) {
-    case 'pistol':
-      box(g, 0.07, 0.08, 0.3, metal, 0, 0, -0.05);
-      box(g, 0.06, 0.16, 0.08, dark, 0, -0.1, 0.05).rotation.x = -0.2;
-      muzzle = [0, 0.01, -0.22];
-      break;
-    case 'shotgun':
-      box(g, 0.08, 0.08, 0.8, metal, 0, 0.02, -0.3);
-      box(g, 0.1, 0.08, 0.25, wood, 0, -0.06, -0.38);
-      box(g, 0.08, 0.14, 0.32, wood, 0, -0.04, 0.2);
-      muzzle = [0, 0.02, -0.72];
-      break;
-    case 'smg':
-      box(g, 0.09, 0.12, 0.45, metal, 0, 0, -0.1);
-      box(g, 0.05, 0.22, 0.07, dark, 0, -0.15, -0.1);
-      box(g, 0.04, 0.04, 0.15, dark, 0, 0.02, -0.4);
-      box(g, 0.06, 0.14, 0.07, dark, 0, -0.12, 0.08);
-      muzzle = [0, 0.02, -0.48];
-      break;
-    case 'rifle':
-      box(g, 0.08, 0.12, 0.7, metal, 0, 0, -0.2);
-      box(g, 0.06, 0.22, 0.09, dark, 0, -0.15, -0.15).rotation.x = 0.25;
-      box(g, 0.07, 0.14, 0.28, dark, 0, -0.03, 0.27);
-      box(g, 0.05, 0.06, 0.2, dark, 0, 0.1, -0.15);
-      muzzle = [0, 0.01, -0.58];
-      break;
-    case 'plasma':
-      box(g, 0.14, 0.14, 0.6, vmMat(0x24484a), 0, 0, -0.15);
-      for (let i = 0; i < 3; i++) box(g, 0.17, 0.05, 0.05, glowMat(0x55ffcc), 0, 0, -0.3 + i * 0.12);
-      box(g, 0.07, 0.16, 0.08, dark, 0, -0.13, 0.05);
-      muzzle = [0, 0, -0.47];
-      break;
-    case 'rocket': {
-      const tube = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.95, 12), vmMat(0x4a5230));
-      tube.rotation.x = Math.PI / 2;
-      tube.position.set(0, 0.05, -0.15);
-      g.add(tube);
-      box(g, 0.06, 0.16, 0.08, dark, 0, -0.1, 0);
-      box(g, 0.08, 0.08, 0.12, dark, -0.12, 0.08, -0.1);
-      muzzle = [0, 0.05, -0.63];
-      break;
-    }
-  }
-  g.userData.muzzle = new THREE.Vector3(...muzzle);
-  return g;
-}
+// Models live in models/guns.js; arms are only drawn on the gun you're holding
+export function buildWeaponModel(id, arms = false) { return buildGunModel(id, arms); }
 
 const _o = new THREE.Vector3(), _d = new THREE.Vector3(), _m = new THREE.Vector3(), _p = new THREE.Vector3();
 const _r = new THREE.Vector3(), _u = new THREE.Vector3();
@@ -149,7 +92,7 @@ export class WeaponSystem {
     if (!game.inventory.has(id) || this.current === id) return;
     if (this.current) this.models[this.current].visible = false;
     if (!this.models[id]) {
-      this.models[id] = buildWeaponModel(id);
+      this.models[id] = buildWeaponModel(id, true);
       this.holder.add(this.models[id]);
     }
     const m = this.models[id];
