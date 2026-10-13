@@ -17,7 +17,8 @@ Then open http://localhost:8000 and click **New Game**. Click the game to captur
 | WASD | Move / strafe (drive when in a car) |
 | Mouse / Left click | Look / shoot |
 | Space | Jump (handbrake in a car) |
-| Shift | Crouch |
+| Shift | Sprint |
+| C | Crouch |
 | E | Backpack (inventory, medkits, weapon upgrades) |
 | F | Interact: pick up, talk, enter/exit car |
 | R | Reload |

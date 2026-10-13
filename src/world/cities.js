@@ -78,6 +78,21 @@ function buildHaven(c, world, scene) {
   group.add(gateMesh);
   const gateBox = world.addBox(X - 5, 0, Z - S - 0.5, X + 5, 3.2, Z - S + 0.5, 'gate');
 
+  addNoteSign(group, world, X + 4.5, Z + 47, -0.4, [
+    'Hey Jack!',
+    'New controls:',
+    '• SHIFT = sprint',
+    '• C = crouch',
+    '— Charlie',
+  ]);
+  addNoteSign(group, world, X - 4.5, Z + 47, 0.4, [
+    'Graphics update!',
+    '• Real sun shadows',
+    '• Trees, rocks & grass',
+    '• Clouds in the sky',
+    'Go explore! — Charlie',
+  ]);
+
   return {
     group, crystals: null,
     gate: { mesh: gateMesh, box: gateBox, open: false },
@@ -85,6 +100,45 @@ function buildHaven(c, world, scene) {
     pistolPos: { x: X, z: Z + 5 },
     targetPos: [{ x: X - 10, z: Z - 25 }, { x: X, z: Z - 28 }, { x: X + 10, z: Z - 25 }],
   };
+}
+
+// Wooden signpost with a written note, facing +z rotated by yaw
+function addNoteSign(group, world, x, z, yaw, lines) {
+  const c = document.createElement('canvas');
+  c.width = 512; c.height = 320;
+  const g = c.getContext('2d');
+  g.fillStyle = '#c8a46a';
+  g.fillRect(0, 0, 512, 320);
+  g.strokeStyle = '#6b4a24';
+  g.lineWidth = 16;
+  g.strokeRect(8, 8, 496, 304);
+  g.fillStyle = '#2a1a0a';
+  g.textAlign = 'center';
+  g.textBaseline = 'middle';
+  lines.forEach((t, i) => {
+    g.font = i === 0 ? 'bold 52px system-ui, sans-serif' : '40px system-ui, sans-serif';
+    g.fillText(t, 256, 50 + i * 55);
+  });
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = 8;
+
+  const sign = new THREE.Group();
+  const wood = new THREE.MeshLambertMaterial({ color: 0x6b4a24 });
+  const board = new THREE.Mesh(new THREE.BoxGeometry(3.2, 2, 0.12), wood);
+  board.position.y = 2.2;
+  const face = new THREE.Mesh(new THREE.PlaneGeometry(3.2, 2), new THREE.MeshLambertMaterial({ map: tex }));
+  face.position.set(0, 2.2, 0.07);
+  for (const px of [-1.3, 1.3]) {
+    const post = new THREE.Mesh(new THREE.BoxGeometry(0.15, 2.2, 0.15), wood);
+    post.position.set(px, 1.1, -0.1);
+    sign.add(post);
+  }
+  sign.add(board, face);
+  sign.position.set(x, 0, z);
+  sign.rotation.y = yaw;
+  group.add(sign);
+  world.addBox(x - 1.6, 0, z - 0.6, x + 1.6, 3.2, z + 0.6, 'wall');
 }
 
 // Square-boundary distance from a city center along a unit direction

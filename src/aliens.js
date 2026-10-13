@@ -29,6 +29,7 @@ const darkMat = c => new THREE.MeshLambertMaterial({ color: new THREE.Color(c).m
 
 function part(g, geo, mat, sx, sy, sz, x, y, z) {
   const m = new THREE.Mesh(geo, mat);
+  m.castShadow = !mat.isMeshBasicMaterial;
   m.scale.set(sx, sy, sz);
   m.position.set(x, y, z);
   g.add(m);

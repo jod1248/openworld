@@ -207,8 +207,8 @@ function roadTexture() {
 function buildMothership() {
   const g = new THREE.Group();
   g.position.set(0, 210, 0);
-  const hull = new THREE.MeshLambertMaterial({ color: 0x3a3548, fog: false });
-  const dark = new THREE.MeshLambertMaterial({ color: 0x1e1a28, fog: false });
+  const hull = new THREE.MeshLambertMaterial({ color: 0x3a3548, emissive: 0x231d33, fog: false });
+  const dark = new THREE.MeshLambertMaterial({ color: 0x1e1a28, emissive: 0x16121f, fog: false });
   const glow = new THREE.MeshBasicMaterial({ color: 0x7dff9a, fog: false });
   g.add(new THREE.Mesh(new THREE.CylinderGeometry(140, 165, 16, 48), hull));
   const lower = new THREE.Mesh(new THREE.CylinderGeometry(160, 70, 26, 48), dark);
@@ -245,8 +245,15 @@ export function buildEnvironment(scene) {
 
   scene.add(new THREE.HemisphereLight(0xdcccff, 0x5a4a3a, 1.5));
   const sun = new THREE.DirectionalLight(0xffe0c0, 2.2);
-  sun.position.set(300, 500, 200);
-  scene.add(sun);
+  const SUN_DIR = new THREE.Vector3(300, 500, 200).normalize();
+  sun.position.copy(SUN_DIR).multiplyScalar(300);
+  // Shadows only cover the area around the camera; the sun follows it in update()
+  sun.castShadow = true;
+  sun.shadow.mapSize.set(2048, 2048);
+  Object.assign(sun.shadow.camera, { left: -80, right: 80, top: 80, bottom: -80, near: 1, far: 700 });
+  sun.shadow.bias = -0.0005;
+  sun.shadow.normalBias = 0.04;
+  scene.add(sun, sun.target);
 
   const skyMat = new THREE.ShaderMaterial({
     side: THREE.BackSide,
@@ -272,6 +279,7 @@ export function buildEnvironment(scene) {
     new THREE.PlaneGeometry(2600, 2600).rotateX(-Math.PI / 2),
     new THREE.MeshLambertMaterial({ map: groundTexture() }),
   );
+  ground.receiveShadow = true;
   scene.add(ground);
 
   const ship = buildMothership();
@@ -281,6 +289,9 @@ export function buildEnvironment(scene) {
     sky, ship, leaving: false,
     update(dt, camPos) {
       sky.position.copy(camPos);
+      // Snap to whole metres so shadow edges don't shimmer as you walk
+      sun.target.position.set(Math.round(camPos.x), 0, Math.round(camPos.z));
+      sun.position.copy(sun.target.position).addScaledVector(SUN_DIR, 300);
       ship.rotation.y += dt * 0.04;
       ship.userData.beam.material.opacity = 0.13 + Math.sin(performance.now() * 0.002) * 0.05;
       if (this.leaving && ship.visible) {

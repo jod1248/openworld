@@ -3,6 +3,7 @@ import { game, on } from './game.js';
 import { input } from './input.js';
 import { World, buildEnvironment } from './world/world.js';
 import { buildCities, getCity } from './world/cities.js';
+import { buildNature } from './world/nature.js';
 import { Effects } from './effects.js';
 import { Player } from './player.js';
 import { Inventory } from './inventory.js';
@@ -25,6 +26,10 @@ const $ = id => document.getElementById(id);
 const renderer = new THREE.WebGLRenderer({ antialias: true, logarithmicDepthBuffer: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
 renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.15;
 $('game').appendChild(renderer.domElement);
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.05, 2600);
@@ -43,6 +48,7 @@ game.world = new World(scene);
 game.env = buildEnvironment(scene);
 game.effects = new Effects(scene);
 game.cities = buildCities(game.world, scene);
+game.nature = buildNature(game.world, scene, game.cities, game.roads);
 game.player = new Player();
 game.inventory = new Inventory();
 game.weapons = new WeaponSystem(camera);
@@ -57,6 +63,14 @@ game.tutorial = new Tutorial();
 game.npcs.init();
 game.vehicles.init();
 game.regions.init();
+// Buildings, walls, cars and people cast and catch shadows (glowing / see-through things don't)
+scene.traverse(o => {
+  if (!o.isMesh || o.isInstancedMesh) return;
+  const m = o.material;
+  if (m.transparent || m.fog === false || m.isShaderMaterial || m.isMeshBasicMaterial) return;
+  o.castShadow = o.receiveShadow = true;
+});
+camera.traverse(o => { o.castShadow = o.receiveShadow = false; }); // not the gun in your hands
 
 // --- Menus & state ---
 const overlays = ['title', 'pause', 'death', 'victory', 'backpack', 'map-overlay', 'dialog'];
@@ -254,6 +268,7 @@ function frame() {
     camera.lookAt(0, 60, 0);
   }
   game.env.update(dt, camera.position);
+  game.nature.update(dt);
   if (game.state !== 'title') game.hud.update(dt);
   renderer.render(scene, camera);
   input.endFrame();

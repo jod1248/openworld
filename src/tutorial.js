@@ -51,7 +51,7 @@ const STEPS = [
   { text: 'Move the <b>mouse</b> to look around.', check: P => P.lookAccum > 2.2 },
   { text: 'Use <b>W A S D</b> to walk forward, back, and strafe.', check: P => P.moveAccum > 6 },
   { text: 'Press <b>SPACE</b> to jump over the crates.', check(P) { return P.pos.z < this.H.z + 34; } },
-  { text: 'Hold <b>SHIFT</b> to crouch and sneak under the barrier.', check(P) { return P.pos.z < this.H.z + 24; } },
+  { text: 'Hold <b>C</b> to crouch and sneak under the barrier.', check(P) { return P.pos.z < this.H.z + 24; } },
   {
     text: 'There\'s a pistol on the ground ahead. Walk up to it and press <b>F</b> to pick it up.',
     check: () => game.inventory.has('pistol'),

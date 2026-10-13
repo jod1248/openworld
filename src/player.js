@@ -55,7 +55,7 @@ export class Player {
     this.look();
     const w = game.world, p = this.pos;
 
-    const wantCrouch = input.down('ShiftLeft') || input.down('ShiftRight');
+    const wantCrouch = input.down('KeyC');
     if (wantCrouch) this.crouching = true;
     else if (this.crouching && !w.collides(p.x, p.z, this.radius * 0.95, p.y + STEP, p.y + STAND_H)) this.crouching = false;
     this.height = this.crouching ? CROUCH_H : STAND_H;
@@ -67,7 +67,8 @@ export class Player {
     let fx = -sy * f + cy * r, fz = -cy * f - sy * r;
     const len = Math.hypot(fx, fz);
     if (len > 0) { fx /= len; fz /= len; }
-    const speed = this.crouching ? 3.2 : 7;
+    const sprinting = !this.crouching && (input.down('ShiftLeft') || input.down('ShiftRight'));
+    const speed = this.crouching ? 3.2 : sprinting ? 11 : 7;
     if (this.onGround || len > 0) {
       const accel = this.onGround ? 55 : 14;
       const ax = fx * speed - this.vel.x, az = fz * speed - this.vel.z;
