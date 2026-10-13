@@ -18,6 +18,7 @@ import { Regions } from './regions.js';
 import { Tutorial } from './tutorial.js';
 import { HUD } from './hud.js';
 import { audio } from './audio.js';
+import { createComposer } from './post.js';
 import { hasSave, loadSave, saveGame, clearSave } from './save.js';
 
 const $ = id => document.getElementById(id);
@@ -39,7 +40,9 @@ window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
+  post.setSize(window.innerWidth, window.innerHeight);
 });
+const post = createComposer(renderer, scene, camera);
 
 Object.assign(game, { scene, camera, renderer });
 game.save = saveGame;
@@ -270,7 +273,7 @@ function frame() {
   game.env.update(dt, camera.position);
   game.nature.update(dt);
   if (game.state !== 'title') game.hud.update(dt);
-  renderer.render(scene, camera);
+  post.render(dt);
   input.endFrame();
 }
 frame();

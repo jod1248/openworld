@@ -5,7 +5,7 @@ A browser-based 3D first-person open-world game built with Three.js (loaded from
 ## Run
 
 ```bash
-python3 -m http.server 8000
+python3 serve.py
 ```
 
 Then open http://localhost:8000 and click **New Game**. Click the game to capture the mouse.

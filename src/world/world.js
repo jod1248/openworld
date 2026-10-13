@@ -161,55 +161,118 @@ export class World {
   }
 }
 
+// Fine detail: grass blades, pebbles and soil specks. Kept fairly neutral so the
+// large-scale vertex colours below decide whether an area reads as grass or dirt.
 function groundTexture() {
+  const N = 512;
   const c = document.createElement('canvas');
-  c.width = c.height = 256;
+  c.width = c.height = N;
   const g = c.getContext('2d');
-  g.fillStyle = '#6b6942';
-  g.fillRect(0, 0, 256, 256);
-  for (let i = 0; i < 7000; i++) {
-    const v = Math.random();
-    g.fillStyle = v < 0.5 ? `rgba(78,92,40,${Math.random() * 0.5})`
-      : v < 0.8 ? `rgba(125,108,72,${Math.random() * 0.5})` : `rgba(58,52,38,${Math.random() * 0.5})`;
-    const s = 1 + Math.random() * 3;
-    g.fillRect(Math.random() * 256, Math.random() * 256, s, s);
+  g.fillStyle = '#ece6d4';
+  g.fillRect(0, 0, N, N);
+  for (let i = 0; i < 2500; i++) {
+    const r = 4 + Math.random() * 18;
+    g.fillStyle = `rgba(${Math.random() < 0.5 ? '150,170,110' : '200,170,130'},0.25)`;
+    g.beginPath(); g.arc(Math.random() * N, Math.random() * N, r, 0, 7); g.fill();
+  }
+  for (let i = 0; i < 26000; i++) {
+    const x = Math.random() * N, y = Math.random() * N, v = Math.random();
+    if (v < 0.6) {
+      g.strokeStyle = `rgba(${120 + Math.random() * 60},${150 + Math.random() * 60},${80 + Math.random() * 40},0.6)`;
+      g.lineWidth = 1;
+      g.beginPath(); g.moveTo(x, y); g.lineTo(x + (Math.random() - 0.5) * 4, y - 2 - Math.random() * 5); g.stroke();
+    } else {
+      const sh = 130 + Math.random() * 110;
+      g.fillStyle = `rgba(${sh},${sh * 0.9},${sh * 0.75},0.6)`;
+      g.fillRect(x, y, 1 + Math.random() * 2, 1 + Math.random() * 2);
+    }
   }
   const t = new THREE.CanvasTexture(c);
   t.wrapS = t.wrapT = THREE.RepeatWrapping;
-  t.repeat.set(180, 180);
+  t.repeat.set(520, 520);
   t.colorSpace = THREE.SRGBColorSpace;
   t.anisotropy = 8;
   return t;
 }
 
-function roadTexture() {
-  const c = document.createElement('canvas');
-  c.width = 64; c.height = 128;
-  const g = c.getContext('2d');
-  g.fillStyle = '#3a393b';
-  g.fillRect(0, 0, 64, 128);
-  for (let i = 0; i < 600; i++) {
-    g.fillStyle = `rgba(${Math.random() < 0.5 ? '20,20,20' : '90,90,90'},0.35)`;
-    g.fillRect(Math.random() * 64, Math.random() * 128, 1.5, 1.5);
+// Smooth value noise for big patches of colour across the map
+function valueNoise(seed) {
+  const h = (x, y) => { const n = Math.sin(x * 127.1 + y * 311.7 + seed * 74.7) * 43758.5453; return n - Math.floor(n); };
+  const sm = t => t * t * (3 - 2 * t);
+  return (x, y) => {
+    const xi = Math.floor(x), yi = Math.floor(y), xf = sm(x - xi), yf = sm(y - yi);
+    const a = h(xi, yi), b = h(xi + 1, yi), c = h(xi, yi + 1), d = h(xi + 1, yi + 1);
+    return a + (b - a) * xf + (c - a) * yf + (a - b - c + d) * xf * yf;
+  };
+}
+
+function groundGeometry() {
+  const geo = new THREE.PlaneGeometry(2600, 2600, 260, 260).rotateX(-Math.PI / 2);
+  const pos = geo.attributes.position, n = pos.count;
+  const col = new Float32Array(n * 3);
+  const n1 = valueNoise(1), n2 = valueNoise(2), n3 = valueNoise(3);
+  const grass = new THREE.Color(0x8aa850), dry = new THREE.Color(0xc8b078), dirt = new THREE.Color(0xa07a58), moss = new THREE.Color(0x6a8a48);
+  const c = new THREE.Color();
+  for (let i = 0; i < n; i++) {
+    const x = pos.getX(i), z = pos.getZ(i);
+    const big = n1(x / 160, z / 160) * 0.65 + n1(x / 55, z / 55) * 0.35;
+    const wet = n2(x / 90, z / 90), speck = n3(x / 18, z / 18);
+    c.copy(dry).lerp(grass, THREE.MathUtils.smoothstep(big, 0.35, 0.65));
+    c.lerp(moss, THREE.MathUtils.smoothstep(wet, 0.6, 0.85) * 0.7);
+    c.lerp(dirt, THREE.MathUtils.smoothstep(speck, 0.62, 0.8) * 0.6);
+    c.multiplyScalar(1.1 + speck * 0.35);
+    col[i * 3] = c.r; col[i * 3 + 1] = c.g; col[i * 3 + 2] = c.b;
   }
-  g.fillStyle = '#d8b84a';
-  g.fillRect(30, 0, 4, 64);
-  g.fillStyle = '#8a8a8a';
-  g.fillRect(2, 0, 2, 128);
-  g.fillRect(60, 0, 2, 128);
+  geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  return geo;
+}
+
+function groundMaterial() {
+  return new THREE.MeshLambertMaterial({ map: groundTexture(), vertexColors: true });
+}
+
+function roadTexture() {
+  const W = 128, H = 256;
+  const c = document.createElement('canvas');
+  c.width = W; c.height = H;
+  const g = c.getContext('2d');
+  g.fillStyle = '#4a494c';
+  g.fillRect(0, 0, W, H);
+  for (let i = 0; i < 5000; i++) {
+    const v = 40 + Math.random() * 80;
+    g.fillStyle = `rgba(${v},${v},${v},0.4)`;
+    g.fillRect(Math.random() * W, Math.random() * H, 1.5, 1.5);
+  }
+  // darker tyre tracks
+  g.fillStyle = 'rgba(20,20,22,0.18)';
+  for (const x of [22, 40, 86, 104]) g.fillRect(x - 5, 0, 10, H);
+  // gravel shoulders, white edge lines, dashed yellow centre line
+  g.fillStyle = '#6a6250';
+  g.fillRect(0, 0, 6, H); g.fillRect(W - 6, 0, 6, H);
+  g.fillStyle = '#e8e4d8';
+  g.fillRect(8, 0, 3, H); g.fillRect(W - 11, 0, 3, H);
+  g.fillStyle = '#e8c048';
+  g.fillRect(W / 2 - 2, 0, 4, H * 0.45);
+  for (let i = 0; i < 12; i++) {
+    g.strokeStyle = 'rgba(20,20,20,0.5)';
+    let x = Math.random() * W, y = Math.random() * H;
+    g.beginPath(); g.moveTo(x, y);
+    for (let k = 0; k < 5; k++) { x += (Math.random() - 0.5) * 16; y += Math.random() * 14; g.lineTo(x, y); }
+    g.stroke();
+  }
   const t = new THREE.CanvasTexture(c);
   t.wrapS = t.wrapT = THREE.RepeatWrapping;
   t.colorSpace = THREE.SRGBColorSpace;
-  t.anisotropy = 8;
+  t.anisotropy = 16;
   return t;
 }
 
 function buildMothership() {
   const g = new THREE.Group();
   g.position.set(0, 210, 0);
-  const hull = new THREE.MeshLambertMaterial({ color: 0x3a3548, emissive: 0x231d33, fog: false });
-  const dark = new THREE.MeshLambertMaterial({ color: 0x1e1a28, emissive: 0x16121f, fog: false });
-  const glow = new THREE.MeshBasicMaterial({ color: 0x7dff9a, fog: false });
+  const hull = new THREE.MeshLambertMaterial({ color: 0x3a3548, emissive: 0x4a3e66, fog: false });
+  const dark = new THREE.MeshLambertMaterial({ color: 0x1e1a28, emissive: 0x2e2640, fog: false });
+  const glow = new THREE.MeshBasicMaterial({ color: new THREE.Color(0x7dff9a).multiplyScalar(3), fog: false });
   g.add(new THREE.Mesh(new THREE.CylinderGeometry(140, 165, 16, 48), hull));
   const lower = new THREE.Mesh(new THREE.CylinderGeometry(160, 70, 26, 48), dark);
   lower.position.y = -21;
@@ -223,6 +286,11 @@ function buildMothership() {
     const l = new THREE.Mesh(lightGeo, glow);
     l.position.set(Math.cos(a) * 158, -4, Math.sin(a) * 158);
     g.add(l);
+  }
+  for (const [r, y] of [[150, -12], [110, -24], [72, -33]]) {
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(r, 1.2, 6, 96).rotateX(Math.PI / 2), glow);
+    ring.position.y = y;
+    g.add(ring);
   }
   const core = new THREE.Mesh(new THREE.CylinderGeometry(20, 20, 4, 24), glow);
   core.position.y = -35;
@@ -239,13 +307,14 @@ function buildMothership() {
 }
 
 export function buildEnvironment(scene) {
-  const fogColor = new THREE.Color(0x8c7488);
-  scene.fog = new THREE.Fog(fogColor, 90, 700);
+  // Alien dusk: low warm sun, violet sky, rose haze on the horizon
+  const SUN_DIR = new THREE.Vector3(0.55, 0.3, 0.78).normalize();
+  const fogColor = new THREE.Color(0xb88a86);
+  scene.fog = new THREE.FogExp2(fogColor, 0.0022);
   scene.background = fogColor.clone();
 
-  scene.add(new THREE.HemisphereLight(0xdcccff, 0x5a4a3a, 1.5));
-  const sun = new THREE.DirectionalLight(0xffe0c0, 2.2);
-  const SUN_DIR = new THREE.Vector3(300, 500, 200).normalize();
+  scene.add(new THREE.HemisphereLight(0xb4a8f0, 0x6a5440, 2.0));
+  const sun = new THREE.DirectionalLight(0xffb27a, 3.4);
   sun.position.copy(SUN_DIR).multiplyScalar(300);
   // Shadows only cover the area around the camera; the sun follows it in update()
   sun.castShadow = true;
@@ -258,26 +327,46 @@ export function buildEnvironment(scene) {
   const skyMat = new THREE.ShaderMaterial({
     side: THREE.BackSide,
     depthWrite: false,
+    fog: false,
     uniforms: {
-      top: { value: new THREE.Color(0x24143c) },
-      mid: { value: fogColor.clone() },
-      bottom: { value: new THREE.Color(0x6a5a50) },
+      sunDir: { value: SUN_DIR },
+      top: { value: new THREE.Color(0x140c34) },
+      upper: { value: new THREE.Color(0x4a2d6e) },
+      horizon: { value: fogColor.clone() },
+      glow: { value: new THREE.Color(0xff9a52) },
+      bottom: { value: new THREE.Color(0x5a4440) },
     },
     vertexShader: `varying vec3 vP; void main(){ vP = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
-    fragmentShader: `uniform vec3 top; uniform vec3 mid; uniform vec3 bottom; varying vec3 vP;
-      void main(){ float h = vP.y; vec3 c = h > 0.0 ? mix(mid, top, pow(clamp(h * 1.6, 0.0, 1.0), 0.7)) : mix(mid, bottom, min(1.0, -h * 4.0));
-      gl_FragColor = vec4(c, 1.0);
-      #include <colorspace_fragment>
+    fragmentShader: `uniform vec3 sunDir; uniform vec3 top; uniform vec3 upper; uniform vec3 horizon; uniform vec3 glow; uniform vec3 bottom; varying vec3 vP;
+      float hash(vec3 p){ return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453); }
+      void main(){
+        vec3 d = normalize(vP);
+        float h = d.y;
+        float sd = max(dot(d, sunDir), 0.0);
+        vec3 c = h > 0.0
+          ? mix(mix(horizon, upper, smoothstep(0.0, 0.35, h)), top, smoothstep(0.3, 0.9, h))
+          : mix(horizon, bottom, min(1.0, -h * 5.0));
+        // warm glow around the sun that spreads along the horizon
+        c += glow * (pow(sd, 6.0) * 0.6 + pow(sd, 1.5) * 0.25 * (1.0 - smoothstep(0.0, 0.5, abs(h))));
+        // sun disc with a soft halo
+        c += vec3(1.0, 0.85, 0.6) * (smoothstep(0.9993, 0.9997, sd) * 6.0 + pow(sd, 400.0) * 1.5);
+        // stars, fading out toward the horizon and the sun
+        vec3 g = floor(d * 400.0);
+        float st = step(0.9975, hash(g)) * smoothstep(0.25, 0.7, h) * (1.0 - pow(sd, 3.0));
+        c += vec3(st) * (0.5 + 0.5 * hash(g + 1.0));
+        gl_FragColor = vec4(c, 1.0);
+        #include <tonemapping_fragment>
+        #include <colorspace_fragment>
       }`,
   });
-  const sky = new THREE.Mesh(new THREE.SphereGeometry(1800, 32, 16), skyMat);
+  const sky = new THREE.Mesh(new THREE.SphereGeometry(1800, 48, 24), skyMat);
   sky.renderOrder = -1;
   sky.frustumCulled = false;
   scene.add(sky);
 
   const ground = new THREE.Mesh(
-    new THREE.PlaneGeometry(2600, 2600).rotateX(-Math.PI / 2),
-    new THREE.MeshLambertMaterial({ map: groundTexture() }),
+    groundGeometry(),
+    groundMaterial(),
   );
   ground.receiveShadow = true;
   scene.add(ground);

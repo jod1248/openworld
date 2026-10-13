@@ -86,10 +86,10 @@ function buildHaven(c, world, scene) {
     '— Charlie',
   ]);
   addNoteSign(group, world, X - 4.5, Z + 47, 0.4, [
-    'Graphics update!',
-    '• Real sun shadows',
-    '• Trees, rocks & grass',
-    '• Clouds in the sky',
+    'Graphics overhaul!',
+    '• Sunset sky + stars',
+    '• Glowing city lights',
+    '• Trees, grass, shadows',
     'Go explore! — Charlie',
   ]);
 
