@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Overrun</title>
+<link rel="stylesheet" href="style.css">
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body>
+<div id="game"></div>
+
+<div id="hud" class="hidden">
+  <div id="vignette"></div>
+  <div id="crosshair"><span></span><span></span><span></span><span></span></div>
+  <div id="hitmarker"></div>
+  <div id="tutorial" class="hidden"><div class="tut-step" id="tut-step"></div><div id="tut-text"></div></div>
+  <div id="prompt" class="hidden"></div>
+  <div id="toasts"></div>
+  <div id="loot-feed"></div>
+  <div id="quest-tracker"></div>
+  <canvas id="minimap" width="200" height="200"></canvas>
+  <div id="location"></div>
+  <div id="status">
+    <div class="bar hp"><div id="hp-fill"></div><span id="hp-text"></span></div>
+    <div class="bar armor"><div id="armor-fill"></div></div>
+    <div id="currency"><span class="core-ico"></span><span id="cores">0</span> <span class="part-ico"></span><span id="parts">0</span> <span class="med-ico">+</span><span id="medkits">0</span></div>
+  </div>
+  <div id="weapon-info"><div id="weapon-name"></div><div id="ammo"></div></div>
+  <div id="car-info" class="hidden"><div id="car-speed"></div><div class="bar car"><div id="car-fill"></div></div></div>
+  <div id="boss-bar" class="hidden"><div class="label">THE OVERSEER <span id="boss-shield"></span></div><div class="bar boss"><div id="boss-fill"></div></div></div>
+</div>
+
+<div id="dialog" class="hidden">
+  <div id="dlg-name"></div>
+  <div id="dlg-text"></div>
+  <div id="dlg-opts"></div>
+</div>
+
+<div id="backpack" class="overlay hidden">
+  <div class="panel wide">
+    <div class="panel-head"><h2>Backpack</h2><span class="hint">E or Esc to close</span></div>
+    <div class="bp-grid">
+      <div class="bp-col" id="bp-left"></div>
+      <div class="bp-col" id="bp-right"></div>
+    </div>
+  </div>
+</div>
+
+<div id="map-overlay" class="overlay hidden">
+  <div class="panel map-panel">
+    <div class="panel-head"><h2>World Map</h2><span class="hint">M to close</span></div>
+    <canvas id="bigmap" width="700" height="700"></canvas>
+  </div>
+</div>
+
+<div id="title" class="overlay">
+  <div class="panel title-panel">
+    <h1>OVERRUN</h1>
+    <p class="sub">The cities have fallen. Take them back.</p>
+    <div class="btns">
+      <button id="btn-continue" class="hidden">Continue</button>
+      <button id="btn-new">New Game</button>
+    </div>
+    <div class="controls">
+      <div><b>WASD</b> move / strafe</div><div><b>Mouse</b> look · <b>Click</b> shoot</div>
+      <div><b>Space</b> jump</div><div><b>Shift</b> crouch</div>
+      <div><b>E</b> backpack</div><div><b>F</b> interact / enter car</div>
+      <div><b>R</b> reload</div><div><b>1-6 / Wheel</b> switch weapon</div>
+      <div><b>H</b> use medkit</div><div><b>M</b> world map</div>
+    </div>
+    <p id="loading" class="sub">Building world…</p>
+  </div>
+</div>
+
+<div id="pause" class="overlay hidden">
+  <div class="panel title-panel">
+    <h2>Paused</h2>
+    <div class="btns"><button id="btn-resume">Resume</button></div>
+    <p class="sub">Progress auto-saves after the tutorial.</p>
+  </div>
+</div>
+
+<div id="death" class="overlay hidden">
+  <div class="panel title-panel">
+    <h2 class="red">You were overrun</h2>
+    <p class="sub" id="death-text"></p>
+    <div class="btns"><button id="btn-respawn">Respawn</button></div>
+  </div>
+</div>
+
+<div id="victory" class="overlay hidden">
+  <div class="panel title-panel">
+    <h1>VICTORY</h1>
+    <p class="sub">The Overseer has fallen and the mothership is retreating. The world is yours again.</p>
+    <div class="btns"><button id="btn-explore">Keep exploring</button></div>
+  </div>
+</div>
+
+<script type="module" src="src/main.js"></script>
+</body>
+</html>
