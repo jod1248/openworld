@@ -43,7 +43,8 @@ export class Player {
   }
 
   look() {
-    const dx = input.mouseDX * this.sens, dy = input.mouseDY * this.sens;
+    const sens = this.sens * (game.camera.fov / 75);   // finer aim when zoomed in
+    const dx = input.mouseDX * sens, dy = input.mouseDY * sens;
     this.yaw -= dx;
     this.pitch = clamp(this.pitch - dy, -1.5, 1.5);
     this.lookAccum += Math.abs(dx) + Math.abs(dy);
@@ -67,8 +68,9 @@ export class Player {
     let fx = -sy * f + cy * r, fz = -cy * f - sy * r;
     const len = Math.hypot(fx, fz);
     if (len > 0) { fx /= len; fz /= len; }
-    const sprinting = !this.crouching && (input.down('ShiftLeft') || input.down('ShiftRight'));
-    const speed = this.crouching ? 3.2 : sprinting ? 11 : 7;
+    const aiming = (game.weapons?.ads || 0) > 0.5;
+    const sprinting = !this.crouching && !aiming && (input.down('ShiftLeft') || input.down('ShiftRight'));
+    const speed = (this.crouching ? 3.2 : sprinting ? 11 : 7) * (aiming ? 0.6 : 1);
     if (this.onGround || len > 0) {
       const accel = this.onGround ? 55 : 14;
       const ax = fx * speed - this.vel.x, az = fz * speed - this.vel.z;

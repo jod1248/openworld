@@ -252,6 +252,12 @@ export function buildGunModel(id, arms = false) {
   const g = new THREE.Group();
   const muzzle = BUILDERS[id](g, arms);
   g.userData.muzzle = new THREE.Vector3(...muzzle);
+  // Aim-down-sights: the sight's x/y in the gun model, and the zoomed field of view
+  const [sx, sy, fov] = {
+    pistol: [0, 0.064, 58], shotgun: [0, 0.068, 60], smg: [0, 0.098, 52],
+    rifle: [0, 0.11, 42], plasma: [0, 0.106, 50], rocket: [-0.1, 0.12, 48],
+  }[id];
+  g.userData.sight = { x: sx, y: sy, fov };
   if (arms) {
     // Held in first person: long guns sit further out so the stock doesn't fill the screen
     const reach = { pistol: 0.02, shotgun: 0.26, smg: 0.12, rifle: 0.24, plasma: 0.16, rocket: 0.2 }[id];

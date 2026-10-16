@@ -6,11 +6,13 @@ export const input = {
   mouseDX: 0,
   mouseDY: 0,
   mouseDown: false,
+  aimDown: false,
   clicked: false,
   wheel: 0,
   locked: false,
   down(code) { return keys.has(code); },
   pressed(code) { return pressed.has(code); },
+  consume(code) { pressed.delete(code); },   // stop one key press triggering two things
   onKey(fn) { keyHandlers.push(fn); },
   endFrame() {
     pressed.clear();
@@ -19,7 +21,7 @@ export const input = {
     this.wheel = 0;
     this.clicked = false;
   },
-  clear() { keys.clear(); this.mouseDown = false; },
+  clear() { keys.clear(); this.mouseDown = false; this.aimDown = false; },
 };
 
 window.addEventListener('keydown', e => {
@@ -39,10 +41,15 @@ document.addEventListener('mousemove', e => {
 });
 document.addEventListener('mousedown', e => {
   if (input.locked && e.button === 0) { input.mouseDown = true; input.clicked = true; }
+  if (input.locked && e.button === 2) input.aimDown = true;
 });
-document.addEventListener('mouseup', e => { if (e.button === 0) input.mouseDown = false; });
+document.addEventListener('mouseup', e => {
+  if (e.button === 0) input.mouseDown = false;
+  if (e.button === 2) input.aimDown = false;
+});
+document.addEventListener('contextmenu', e => e.preventDefault());
 document.addEventListener('wheel', e => { if (input.locked) input.wheel += Math.sign(e.deltaY); }, { passive: true });
 document.addEventListener('pointerlockchange', () => {
   input.locked = !!document.pointerLockElement;
-  if (!input.locked) input.mouseDown = false;
+  if (!input.locked) input.mouseDown = input.aimDown = false;
 });

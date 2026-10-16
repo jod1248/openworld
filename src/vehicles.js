@@ -245,7 +245,7 @@ export class Vehicles {
     if (car) {
       P.pos.set(car.pos.x, 0, car.pos.z);
       audio.engine(true, car.speed());
-      if (input.pressed('KeyF')) this.exit();
+      if (input.pressed('KeyF')) { input.consume('KeyF'); this.exit(); }
     }
   }
 

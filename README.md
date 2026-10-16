@@ -16,6 +16,7 @@ Then open http://localhost:8000 and click **New Game**. Click the game to captur
 |---|---|
 | WASD | Move / strafe (drive when in a car) |
 | Mouse / Left click | Look / shoot |
+| Right click (hold) | Aim down sights / zoom |
 | Space | Jump (handbrake in a car) |
 | Shift | Sprint |
 | C | Crouch |

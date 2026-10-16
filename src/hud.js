@@ -85,7 +85,7 @@ export class HUD {
 
     const id = game.weapons.current;
     el.weaponInfo.classList.toggle('hidden', !!P.inCar);
-    el.crosshair.classList.toggle('hidden', !!P.inCar);
+    el.crosshair.classList.toggle('hidden', !!P.inCar || game.weapons.ads > 0.5);
     if (id) {
       const ws = inv.weapons[id];
       el.wname.textContent = WEAPONS[id].name + (game.weapons.reloadT > 0 ? ' — reloading' : '');
@@ -149,8 +149,14 @@ export class HUD {
     return `rgba(230,70,90,${alpha})`;
   }
 
+  // Direction you're looking: the chase camera's while driving, otherwise the player's
+  viewYaw() {
+    const P = game.player;
+    return P.inCar ? P.inCar.heading + game.vehicles.camYaw : P.yaw;
+  }
+
   drawMinimap() {
-    const ctx = this.mm, P = game.player, R = 100, scale = 0.9;
+    const ctx = this.mm, P = game.player, R = 100, scale = 0.9, yaw = this.viewYaw();
     ctx.clearRect(0, 0, 200, 200);
     ctx.save();
     ctx.beginPath();
@@ -159,7 +165,7 @@ export class HUD {
     ctx.fillStyle = 'rgba(25,20,30,0.78)';
     ctx.fillRect(0, 0, 200, 200);
     ctx.translate(R, R);
-    ctx.rotate(P.yaw);
+    ctx.rotate(yaw);
     ctx.scale(scale, scale);
     ctx.translate(-P.pos.x, -P.pos.z);
     ctx.strokeStyle = 'rgba(150,150,150,0.8)';
@@ -181,7 +187,7 @@ export class HUD {
     const wp = this.waypoint;
     if (wp) {
       const dx = (wp.x - P.pos.x) * scale, dz = (wp.z - P.pos.z) * scale;
-      const c = Math.cos(P.yaw), s = Math.sin(P.yaw);
+      const c = Math.cos(yaw), s = Math.sin(yaw);
       let rx = dx * c - dz * s, ry = dx * s + dz * c;
       const d = Math.hypot(rx, ry);
       if (d > 90) { rx = (rx / d) * 90; ry = (ry / d) * 90; }
@@ -245,7 +251,7 @@ export class HUD {
     }
     ctx.save();
     ctx.translate(X(P.pos.x), Z(P.pos.z));
-    ctx.rotate(-P.yaw);
+    ctx.rotate(-this.viewYaw());
     ctx.fillStyle = '#fff';
     ctx.strokeStyle = '#000';
     ctx.beginPath();

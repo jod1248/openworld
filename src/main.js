@@ -95,6 +95,7 @@ function resume() {
 }
 
 function showPause() {
+  saveGame();
   game.state = 'paused';
   hideOverlays();
   $('pause').classList.remove('hidden');
@@ -198,6 +199,11 @@ function respawn() {
   game.aliens.despawnWhere(a => a.tags.includes('wild') || Math.hypot(a.pos.x - P.pos.x, a.pos.z - P.pos.z) < 40);
 }
 
+// Save straight away after anything important, and whenever you pause or leave the page
+for (const ev of ['questDone', 'liberated', 'weapon', 'upgrade', 'collect', 'exitCar']) on(ev, () => saveGame());
+document.addEventListener('visibilitychange', () => { if (document.hidden && game.state !== 'title') saveGame(); });
+window.addEventListener('pagehide', () => { if (game.state !== 'title') saveGame(); });
+
 on('playerDied', () => {
   const lost = Math.floor(game.inventory.cores * 0.2);
   game.inventory.cores -= lost;
@@ -219,7 +225,7 @@ function updateInteract() {
     if (d < it.range && d < bd) { best = it; bd = d; }
   }
   game.hud.setPrompt(best ? `<b>F</b>${best.label()}` : null);
-  if (best && input.pressed('KeyF')) best.interact();
+  if (best && input.pressed('KeyF')) { input.consume('KeyF'); best.interact(); }
 }
 
 // --- Debug helpers (console) ---
@@ -240,7 +246,7 @@ game.debug = {
 
 // --- Main loop ---
 const clock = new THREE.Clock();
-let saveT = 30;
+let saveT = 10;
 camera.position.set(0, 40, 960);
 camera.lookAt(0, 30, 0);
 
@@ -265,7 +271,7 @@ function frame() {
     game.effects.update(dt);
     if (!P.dead) updateInteract();
     saveT -= dt;
-    if (saveT <= 0) { saveT = 30; saveGame(); }
+    if (saveT <= 0) { saveT = 10; saveGame(); }
   } else if (game.state === 'title') {
     camera.position.x = Math.sin(performance.now() * 0.00005) * 200;
     camera.lookAt(0, 60, 0);

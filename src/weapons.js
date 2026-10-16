@@ -15,6 +15,7 @@ export const WEAPONS = {
   rocket: { name: 'Hellfire Launcher', dmg: 260, interval: 1.1, mag: 1, ammo: 'rockets', spread: 0, auto: false, reload: 1.6, recoil: 0.06, tier: 5, hint: 'Liberate Brightwater',
     projectile: { speed: 55, color: 0xff7733, size: 0.3, splash: 7 } },
 };
+export const BASE_FOV = 75;
 export const WEAPON_ORDER = ['pistol', 'shotgun', 'smg', 'rifle', 'plasma', 'rocket'];
 export const AMMO_INFO = {
   light: { name: 'Light rounds', max: 360, drop: 24 },
@@ -77,6 +78,7 @@ export class WeaponSystem {
     this.reloadMax = 1;
     this.switchT = 0;
     this.kick = 0;
+    this.ads = 0;          // 0 = hip, 1 = fully aimed down sights
     this.flashT = 0;
     this.flash = new THREE.Mesh(
       new THREE.PlaneGeometry(0.28, 0.28),
@@ -130,6 +132,11 @@ export class WeaponSystem {
   update(dt) {
     const inv = game.inventory, P = game.player;
     this.holder.visible = !!this.current && !P.inCar;
+    const wantAds = input.aimDown && !!this.current && !P.inCar && !P.dead && this.reloadT <= 0 && this.switchT <= 0;
+    this.ads += ((wantAds ? 1 : 0) - this.ads) * Math.min(1, dt * 14);
+    const zoomFov = this.current ? this.models[this.current].userData.sight.fov : BASE_FOV;
+    const fov = BASE_FOV + (zoomFov - BASE_FOV) * this.ads;
+    if (Math.abs(this.camera.fov - fov) > 0.01) { this.camera.fov = fov; this.camera.updateProjectionMatrix(); }
     this.flashT -= dt;
     this.flash.visible = this.flashT > 0;
     this.light.intensity = this.flashT > 0 ? 6 : 0;
@@ -159,17 +166,20 @@ export class WeaponSystem {
 
     // View-model animation
     this.kick = Math.max(0, this.kick - dt * 8);
-    const bob = P.onGround ? Math.min(P.speed2D, 7) / 7 : 0;
+    const bob = (P.onGround ? Math.min(P.speed2D, 7) / 7 : 0) * (1 - this.ads * 0.85);
     const t = performance.now() * 0.001;
     let dip = 0, tilt = 0;
     if (this.reloadT > 0) { const k = 1 - this.reloadT / this.reloadMax; dip = Math.sin(k * Math.PI) * 0.18; tilt = Math.sin(k * Math.PI) * 0.6; }
     if (this.switchT > 0) dip += this.switchT * 0.8;
+    // When aiming, slide the gun so its sight sits exactly in the middle of the screen
+    const m = this.models[this.current], sg = m.userData.sight, a = this.ads;
+    const aimX = -(m.position.x + sg.x * m.scale.x), aimY = -(m.position.y + sg.y * m.scale.y);
     this.holder.position.set(
-      this.base.x + Math.sin(t * 8) * 0.012 * bob,
-      this.base.y - Math.abs(Math.cos(t * 8)) * 0.012 * bob - dip - (P.crouching ? 0.02 : 0),
-      this.base.z + this.kick * 0.08,
+      this.base.x + (aimX - this.base.x) * a + Math.sin(t * 8) * 0.012 * bob,
+      this.base.y + (aimY - this.base.y) * a - Math.abs(Math.cos(t * 8)) * 0.012 * bob - dip - (P.crouching ? 0.02 : 0) * (1 - a),
+      this.base.z + (-0.36 - this.base.z) * a + this.kick * (0.08 - 0.05 * a),
     );
-    this.holder.rotation.set(this.kick * 0.15 + tilt * 0.3, 0, tilt * 0.4);
+    this.holder.rotation.set(this.kick * (0.15 - 0.1 * a) + tilt * 0.3, 0, tilt * 0.4);
   }
 
   fire(id, def, ws, st) {
@@ -190,10 +200,12 @@ export class WeaponSystem {
         owner: 'player', dmg: st.dmg, splash: pr.splash || 0, color: pr.color, size: pr.size, life: 4,
       });
     } else {
+      // aiming tightens the spread (shotgun pellets still spread a fair bit)
+      const spread = def.spread * (1 - this.ads * (def.pellets ? 0.35 : 0.7));
       for (let i = 0; i < (def.pellets || 1); i++) {
         const dir = _d.clone()
-          .addScaledVector(_r, (Math.random() - 0.5) * 2 * def.spread)
-          .addScaledVector(_u, (Math.random() - 0.5) * 2 * def.spread)
+          .addScaledVector(_r, (Math.random() - 0.5) * 2 * spread)
+          .addScaledVector(_u, (Math.random() - 0.5) * 2 * spread)
           .normalize();
         const end = hitscan(_o, dir, def.range, st.dmg);
         if (i < 3) game.effects.tracer(_m, end);
@@ -202,7 +214,7 @@ export class WeaponSystem {
     this.kick = 1;
     this.flashT = 0.05;
     this.flash.rotation.z = Math.random() * Math.PI;
-    game.player.pitch += def.recoil;
+    game.player.pitch += def.recoil * (1 - this.ads * 0.4);
     game.player.yaw += (Math.random() - 0.5) * def.recoil * 0.5;
     audio.shot(id);
     emit('shot', id);
