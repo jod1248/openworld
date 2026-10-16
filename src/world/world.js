@@ -3,7 +3,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 const CELL = 16;
 export const STEP = 0.45;
-export const WORLD_HALF = 1000;
+export const WORLD_HALF = 1600;
 
 function circleBox(x, z, r, b) {
   const cx = x < b.minX ? b.minX : x > b.maxX ? b.maxX : x;
@@ -189,7 +189,7 @@ function groundTexture() {
   }
   const t = new THREE.CanvasTexture(c);
   t.wrapS = t.wrapT = THREE.RepeatWrapping;
-  t.repeat.set(520, 520);
+  t.repeat.set(720, 720);
   t.colorSpace = THREE.SRGBColorSpace;
   t.anisotropy = 8;
   return t;
@@ -206,8 +206,9 @@ function valueNoise(seed) {
   };
 }
 
+const _blight = new THREE.Color();
 function groundGeometry() {
-  const geo = new THREE.PlaneGeometry(2600, 2600, 260, 260).rotateX(-Math.PI / 2);
+  const geo = new THREE.PlaneGeometry(3600, 3600, 340, 340).rotateX(-Math.PI / 2);
   const pos = geo.attributes.position, n = pos.count;
   const col = new Float32Array(n * 3);
   const n1 = valueNoise(1), n2 = valueNoise(2), n3 = valueNoise(3);
@@ -221,6 +222,9 @@ function groundGeometry() {
     c.lerp(moss, THREE.MathUtils.smoothstep(wet, 0.6, 0.85) * 0.7);
     c.lerp(dirt, THREE.MathUtils.smoothstep(speck, 0.62, 0.8) * 0.6);
     c.multiplyScalar(1.1 + speck * 0.35);
+    // Alien blight on the far frontier: ashy purple ground
+    const blight = THREE.MathUtils.smoothstep(Math.hypot(x, z) + (big - 0.5) * 160, 980, 1150);
+    if (blight > 0) c.lerp(_blight.setRGB(0.32, 0.22, 0.36).multiplyScalar(0.9 + speck * 0.4), blight * 0.85);
     col[i * 3] = c.r; col[i * 3 + 1] = c.g; col[i * 3 + 2] = c.b;
   }
   geo.setAttribute('color', new THREE.BufferAttribute(col, 3));

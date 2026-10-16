@@ -5,6 +5,7 @@ import { audio } from './audio.js';
 import { randomFreePoint, getCity, cityAt } from './world/cities.js';
 import { NEST_POS } from './quests.js';
 import { AMMO_INFO, WEAPONS } from './weapons.js';
+import { WORLD_HALF } from './world/world.js';
 
 const crystalMat = new THREE.MeshLambertMaterial({ color: 0xff3cd8, emissive: 0x9a1080 });
 const ringMat = new THREE.MeshBasicMaterial({ color: 0x7dff9a, transparent: true, opacity: 0.6 });
@@ -106,10 +107,10 @@ class Structure {
 }
 
 const WILD = [
-  { drone: 3, crawler: 2 },
-  { crawler: 3, spitter: 1.5, drone: 1 },
-  { crawler: 2, spitter: 2, stalker: 1, flyer: 1 },
-  { spitter: 2, stalker: 2, flyer: 2, brute: 1 },
+  { drone: 3, crawler: 2, bomber: 0.6 },
+  { crawler: 3, spitter: 1.5, drone: 1, bomber: 1 },
+  { crawler: 2, spitter: 2, stalker: 1, flyer: 1, bomber: 1.2 },
+  { spitter: 2, stalker: 2, flyer: 2, brute: 1, bomber: 1.5 },
 ];
 
 export class Regions {
@@ -149,12 +150,13 @@ export class Regions {
     const st = { pos: new THREE.Vector3(x, 0, z), ready: 0 };
     st.inter = {
       pos: st.pos, range: 2.6,
-      label: () => (game.time < st.ready ? `Resupply recharging (${Math.ceil(st.ready - game.time)}s)` : 'Resupply: refill ammo & health'),
+      label: () => (game.time < st.ready ? `Resupply recharging (${Math.ceil(st.ready - game.time)}s)` : 'Resupply: refill ammo, grenades & health'),
       interact: () => {
         if (game.time < st.ready) return;
         const inv = game.inventory, P = game.player;
         const types = new Set(inv.owned().map(id => WEAPONS[id].ammo));
         for (const t of types) inv.addAmmo(t, Math.ceil(AMMO_INFO[t].max * 0.5));
+        inv.addGrenades(2);
         P.health = P.maxHealth;
         st.ready = game.time + 60;
         audio.quest();
@@ -281,13 +283,14 @@ export class Regions {
     this.wildTimer = rand(9, 16);
     if (game.aliens.count(a => a.tags.includes('wild')) >= 6) return;
     const dc = Math.hypot(P.pos.x, P.pos.z);
-    const level = game.flags.openWorld ? clamp(dc > 700 ? 1 : dc > 520 ? 2 : dc > 380 ? 3 : 4, 1, 4) : 1;
+    // Near the centre and out on the far frontier are the most dangerous
+    const level = game.flags.openWorld ? clamp(dc > 1050 ? 4 : dc > 700 ? 1 : dc > 520 ? 2 : dc > 380 ? 3 : 4, 1, 4) : 1;
     const table = WILD[level - 1];
     const n = 1 + Math.floor(Math.random() * 3);
     const ang = Math.random() * Math.PI * 2, r = rand(70, 100);
     for (let i = 0; i < n; i++) {
       const x = P.pos.x + Math.cos(ang) * r + rand(-6, 6), z = P.pos.z + Math.sin(ang) * r + rand(-6, 6);
-      if (game.world.collides(x, z, 1.2, 0.3, 2.5) || Math.abs(x) > 990 || Math.abs(z) > 990) continue;
+      if (game.world.collides(x, z, 1.2, 0.3, 2.5) || Math.abs(x) > WORLD_HALF - 10 || Math.abs(z) > WORLD_HALF - 10) continue;
       game.aliens.spawn(weightedPick(table), x, z, level, { tags: ['wild'] });
     }
   }

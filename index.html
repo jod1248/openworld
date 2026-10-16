@@ -21,6 +21,8 @@
 
 <div id="hud" class="hidden">
   <div id="vignette"></div>
+  <div id="scope" class="hidden"><div class="scope-ring"></div></div>
+  <div id="combo" class="hidden"></div>
   <div id="crosshair"><span></span><span></span><span></span><span></span></div>
   <div id="hitmarker"></div>
   <div id="tutorial" class="hidden"><div class="tut-step" id="tut-step"></div><div id="tut-text"></div></div>
@@ -33,10 +35,11 @@
   <div id="status">
     <div class="bar hp"><div id="hp-fill"></div><span id="hp-text"></span></div>
     <div class="bar armor"><div id="armor-fill"></div></div>
-    <div id="currency"><span class="core-ico"></span><span id="cores">0</span> <span class="part-ico"></span><span id="parts">0</span> <span class="med-ico">+</span><span id="medkits">0</span></div>
+    <div id="xp-row"><span id="xp-level">LV 1</span><div class="bar xp"><div id="xp-fill"></div></div></div>
+    <div id="currency"><span class="core-ico"></span><span id="cores">0</span> <span class="part-ico"></span><span id="parts">0</span> <span class="med-ico">+</span><span id="medkits">0</span> <span class="nade-ico"></span><span id="grenades">0</span></div>
   </div>
   <div id="weapon-info"><div id="weapon-name"></div><div id="ammo"></div></div>
-  <div id="car-info" class="hidden"><div id="car-speed"></div><div class="bar car"><div id="car-fill"></div></div></div>
+  <div id="car-info" class="hidden"><div id="car-speed"></div><div class="bar car"><div id="car-fill"></div></div><div class="bar nitro"><div id="nitro-fill"></div></div></div>
   <div id="boss-bar" class="hidden"><div class="label">THE OVERSEER <span id="boss-shield"></span></div><div class="bar boss"><div id="boss-fill"></div></div></div>
 </div>
 
@@ -73,9 +76,9 @@
     </div>
     <div class="controls">
       <div><b>WASD</b> move / strafe</div><div><b>Mouse</b> look · <b>Click</b> shoot</div><div><b>Right-click</b> aim / zoom</div>
-      <div><b>Space</b> jump</div><div><b>Shift</b> sprint</div><div><b>C</b> crouch</div>
+      <div><b>Space</b> jump</div><div><b>Shift</b> sprint</div><div><b>C</b> crouch (slide while sprinting)</div><div><b>G</b> throw grenade</div>
       <div><b>E</b> backpack</div><div><b>F</b> interact / enter car</div>
-      <div><b>R</b> reload</div><div><b>1-6 / Wheel</b> switch weapon</div>
+      <div><b>R</b> reload</div><div><b>1-8 / Wheel</b> switch weapon</div>
       <div><b>H</b> use medkit</div><div><b>M</b> world map</div>
     </div>
     <p id="loading" class="sub">Building world…</p>

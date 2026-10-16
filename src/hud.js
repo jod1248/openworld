@@ -1,6 +1,7 @@
 import { game } from './game.js';
 import { WEAPONS, weaponStats } from './weapons.js';
 import { cityAt } from './world/cities.js';
+import { WORLD_HALF } from './world/world.js';
 
 const $ = id => document.getElementById(id);
 
@@ -13,6 +14,7 @@ export class HUD {
       tut: $('tutorial'), tutText: $('tut-text'), tutStep: $('tut-step'), hit: $('hitmarker'), vignette: $('vignette'),
       car: $('car-info'), carSpeed: $('car-speed'), carFill: $('car-fill'), boss: $('boss-bar'), bossFill: $('boss-fill'),
       bossShield: $('boss-shield'), location: $('location'), weaponInfo: $('weapon-info'), crosshair: $('crosshair'),
+      xpFill: $('xp-fill'), xpLevel: $('xp-level'), grenades: $('grenades'), combo: $('combo'), scope: $('scope'),
     };
     this.mm = $('minimap').getContext('2d');
     this.big = $('bigmap').getContext('2d');
@@ -82,6 +84,18 @@ export class HUD {
     el.cores.textContent = inv.cores;
     el.parts.textContent = inv.parts;
     el.medkits.textContent = inv.medkits;
+    el.grenades.textContent = inv.grenades;
+    const pr = game.progress;
+    el.xpLevel.textContent = 'LV ' + pr.level;
+    el.xpFill.style.width = (pr.xp / pr.need()) * 100 + '%';
+    const comboOn = pr.comboActive();
+    el.combo.classList.toggle('hidden', !comboOn);
+    if (comboOn) {
+      const left = 1 - (game.time - pr.lastKill) / 3.5;
+      const html = `<div class="n">×${pr.combo}</div><div class="l">COMBO · ${pr.comboMult().toFixed(2)}× LOOT</div><div class="bar"><div style="width:${left * 100}%"></div></div>`;
+      if (html !== this.lastCombo) { el.combo.innerHTML = html; this.lastCombo = html; }
+    }
+    el.scope.classList.toggle('hidden', !game.weapons.scoped);
 
     const id = game.weapons.current;
     el.weaponInfo.classList.toggle('hidden', !!P.inCar);
@@ -99,6 +113,7 @@ export class HUD {
     if (P.inCar) {
       el.carSpeed.textContent = Math.round(Math.abs(P.inCar.speed()) * 3.6) + ' km/h';
       el.carFill.style.width = (P.inCar.health / P.inCar.maxHealth) * 100 + '%';
+      document.getElementById('nitro-fill').style.width = game.vehicles.nitro * 100 + '%';
     }
 
     const boss = game.regions.boss;
@@ -182,6 +197,10 @@ export class HUD {
     for (const c of game.vehicles.cars) if (!c.destroyed) dot(c.pos.x, c.pos.z, 2.2, c.tag ? '#ff9a3a' : '#bbb');
     for (const n of game.npcs.list) dot(n.pos.x, n.pos.z, 3, game.quests.npcMarker(n) ? '#ffd34a' : '#fff');
     for (const a of game.aliens.list) if (a.alive) dot(a.pos.x, a.pos.z, a.def.boss ? 6 : 2.6, '#ff3b3b');
+    for (const m of game.events.markers()) {
+      if (Math.abs(m.x - P.pos.x) > 150 || Math.abs(m.z - P.pos.z) > 150) continue;
+      dot(m.x, m.z, m.kind === 'pod' ? 5 + Math.sin(performance.now() * 0.008) * 1.5 : 3.5, m.kind === 'pod' ? '#c06aff' : '#ffc14a');
+    }
     ctx.restore();
 
     const wp = this.waypoint;
@@ -216,7 +235,7 @@ export class HUD {
   }
 
   drawBigMap() {
-    const ctx = this.big, W = 700, s = W / 2100, P = game.player;
+    const ctx = this.big, W = 700, s = W / (WORLD_HALF * 2 + 100), P = game.player;
     const X = x => W / 2 + x * s, Z = z => W / 2 + z * s;
     ctx.fillStyle = '#2a2632';
     ctx.fillRect(0, 0, W, W);
@@ -240,6 +259,10 @@ export class HUD {
       const status = !c.hostile ? 'safe' : c.liberated ? 'liberated' : `alien-held · threat ${c.level}`;
       ctx.fillText(status, X(c.x), Z(c.z + c.size) + 14);
     }
+    for (const m of game.events.markers()) {
+      ctx.fillStyle = m.kind === 'pod' ? '#c06aff' : 'rgba(255,193,74,0.35)';
+      ctx.beginPath(); ctx.arc(X(m.x), Z(m.z), m.kind === 'pod' ? 6 : 3, 0, Math.PI * 2); ctx.fill();
+    }
     const wp = game.quests.waypoint();
     if (wp) {
       ctx.save();
@@ -261,7 +284,7 @@ export class HUD {
     ctx.restore();
     ctx.textAlign = 'left';
     ctx.font = '12px system-ui';
-    [['rgba(120,200,120,0.9)', 'Safe town'], ['rgba(230,70,90,0.9)', 'Alien-held'], ['rgba(90,150,255,0.9)', 'Liberated'], ['#ffd34a', 'Objective']]
+    [['rgba(120,200,120,0.9)', 'Safe town'], ['rgba(230,70,90,0.9)', 'Alien-held'], ['rgba(90,150,255,0.9)', 'Liberated'], ['#ffd34a', 'Objective'], ['#c06aff', 'Drop pod'], ['rgba(255,193,74,0.6)', 'Relic (unfound)']]
       .forEach(([c, t], i) => { ctx.fillStyle = c; ctx.fillRect(12, 12 + i * 18, 12, 12); ctx.fillStyle = '#ddd'; ctx.fillText(t, 30, 22 + i * 18); });
   }
 }

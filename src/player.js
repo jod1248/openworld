@@ -56,7 +56,17 @@ export class Player {
     this.look();
     const w = game.world, p = this.pos;
 
-    const wantCrouch = input.down('KeyC');
+    // Slide: press C while sprinting on the ground
+    const sprintKey = input.down('ShiftLeft') || input.down('ShiftRight');
+    if (input.pressed('KeyC') && sprintKey && this.onGround && !this.crouching && Math.hypot(this.vel.x, this.vel.z) > 9) {
+      const v = Math.hypot(this.vel.x, this.vel.z);
+      this.slideT = 0.75;
+      this.vel.x = (this.vel.x / v) * 16;
+      this.vel.z = (this.vel.z / v) * 16;
+      emit('slide');
+    }
+    this.slideT = Math.max(0, (this.slideT || 0) - dt);
+    const wantCrouch = input.down('KeyC') || this.slideT > 0;
     if (wantCrouch) this.crouching = true;
     else if (this.crouching && !w.collides(p.x, p.z, this.radius * 0.95, p.y + STEP, p.y + STAND_H)) this.crouching = false;
     this.height = this.crouching ? CROUCH_H : STAND_H;
@@ -71,7 +81,12 @@ export class Player {
     const aiming = (game.weapons?.ads || 0) > 0.5;
     const sprinting = !this.crouching && !aiming && (input.down('ShiftLeft') || input.down('ShiftRight'));
     const speed = (this.crouching ? 3.2 : sprinting ? 11 : 7) * (aiming ? 0.6 : 1);
-    if (this.onGround || len > 0) {
+    if (this.slideT > 0) {
+      // sliding: keep momentum, slowly bleed off speed, slight steering
+      const drag = Math.exp(-1.8 * dt);
+      this.vel.x *= drag; this.vel.z *= drag;
+      if (len > 0) { this.vel.x += fx * 6 * dt; this.vel.z += fz * 6 * dt; }
+    } else if (this.onGround || len > 0) {
       const accel = this.onGround ? 55 : 14;
       const ax = fx * speed - this.vel.x, az = fz * speed - this.vel.z;
       const al = Math.hypot(ax, az), maxA = accel * dt;
@@ -123,7 +138,8 @@ export class Player {
     this.shake = Math.max(0, this.shake - dt * 3);
     const sh = this.shake * 0.05;
     cam.position.set(this.pos.x + (Math.random() - 0.5) * sh, this.pos.y + this.eye + bob + (Math.random() - 0.5) * sh, this.pos.z);
-    cam.rotation.set(this.pitch, this.yaw, 0, 'YXZ');
+    this.roll = lerp(this.roll || 0, this.slideT > 0 ? 0.06 : 0, Math.min(1, dt * 8));
+    cam.rotation.set(this.pitch, this.yaw, this.roll, 'YXZ');
   }
 
   damage(amount) {

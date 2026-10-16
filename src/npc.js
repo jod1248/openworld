@@ -95,12 +95,12 @@ export class NPCManager {
     });
     this.add({
       id: 'reyes', name: 'Captain Reyes', soldier: true, x: R.x - 6, z: R.z - 10, color: 0x5a6b3a, hat: 0x2d3320,
-      quests: ['clear_square', 'outposts', 'overseer'],
+      quests: ['clear_square', 'outposts', 'frontier', 'overseer'],
       lines: ['Stay sharp out there.', 'Every town we free makes that mothership weaker.', 'Check your backpack. Upgraded guns win fights.'],
     });
     this.add({
       id: 'lin', name: 'Quartermaster Lin', x: R.x + 10, z: R.z - 8, color: 0x2d4f7a,
-      quests: ['lost_supplies'],
+      quests: ['lost_supplies', 'pod_hunter'],
       lines: ['Alien cores make a decent currency these days.', 'Need ammo? Use the resupply crate in the plaza.'],
     });
     this.add({
@@ -109,11 +109,11 @@ export class NPCManager {
       lines: ['Anything with four wheels and an engine, I can get running.', 'Run the aliens over. Saves ammo.'],
     });
     this.add({
-      id: 'tess', name: 'Tess', x: R.x + 14, z: R.z + 16, color: 0x8a3a5a, skin: 0x8d5a3c,
+      id: 'tess', name: 'Tess', x: R.x + 14, z: R.z + 16, color: 0x8a3a5a, skin: 0x8d5a3c, quests: ['relic_hunt'],
       lines: ['The beam over the Metropolis never stops humming.', 'I heard Brightwater has the nastiest ones. Flyers and Brutes.', 'Stalkers can teleport. If one goes invisible, check behind you.'],
     });
     this.add({
-      id: 'harlan', name: 'Old Harlan', x: R.x + 2, z: R.z + 30, color: 0x6b5a4a, hat: 0x4a3a2a,
+      id: 'harlan', name: 'Old Harlan', x: R.x + 2, z: R.z + 30, color: 0x6b5a4a, hat: 0x4a3a2a, quests: ['big_game'],
       lines: ['Back in my day the sky was blue.', 'Those spitters lob acid. Keep moving sideways.', 'Brutes charge in a straight line. Step aside and they hit the wall.'],
     });
   }

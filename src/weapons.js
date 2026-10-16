@@ -14,15 +14,20 @@ export const WEAPONS = {
     projectile: { speed: 90, color: 0x55ffcc, size: 0.22 } },
   rocket: { name: 'Hellfire Launcher', dmg: 260, interval: 1.1, mag: 1, ammo: 'rockets', spread: 0, auto: false, reload: 1.6, recoil: 0.06, tier: 5, hint: 'Liberate Brightwater',
     projectile: { speed: 55, color: 0xff7733, size: 0.3, splash: 7 } },
+  sniper: { name: 'Longshot DMR', dmg: 160, interval: 0.95, mag: 5, ammo: 'sniper', spread: 0.0008, range: 500, auto: false, reload: 2.3, recoil: 0.07, tier: 5, hint: 'Liberate Cinderfall (far east)' },
+  minigun: { name: 'Shredder Minigun', dmg: 12, interval: 0.042, mag: 150, ammo: 'light', spread: 0.05, range: 140, auto: true, reload: 3.2, recoil: 0.003, tier: 5, spin: 0.55, hint: 'Liberate Saltmarsh (far west)' },
 };
+// Thrown with G. Explodes on impact.
+export const GRENADE = { max: 6, dmg: 140, splash: 6.5, speed: 24, cooldown: 0.7 };
 export const BASE_FOV = 75;
-export const WEAPON_ORDER = ['pistol', 'shotgun', 'smg', 'rifle', 'plasma', 'rocket'];
+export const WEAPON_ORDER = ['pistol', 'shotgun', 'smg', 'rifle', 'sniper', 'minigun', 'plasma', 'rocket'];
 export const AMMO_INFO = {
   light: { name: 'Light rounds', max: 360, drop: 24 },
   shells: { name: 'Shells', max: 64, drop: 8 },
   heavy: { name: 'Heavy rounds', max: 300, drop: 20 },
   cells: { name: 'Plasma cells', max: 200, drop: 16 },
   rockets: { name: 'Rockets', max: 20, drop: 2 },
+  sniper: { name: 'Sniper rounds', max: 40, drop: 4 },
 };
 export const UPGRADE_TRACKS = { dmg: 'Damage', rate: 'Fire rate', mag: 'Magazine' };
 
@@ -79,6 +84,9 @@ export class WeaponSystem {
     this.switchT = 0;
     this.kick = 0;
     this.ads = 0;          // 0 = hip, 1 = fully aimed down sights
+    this.spinT = 0;        // minigun spin-up
+    this.grenadeCd = 0;
+    this.scoped = false;
     this.flashT = 0;
     this.flash = new THREE.Mesh(
       new THREE.PlaneGeometry(0.28, 0.28),
@@ -140,6 +148,11 @@ export class WeaponSystem {
     this.flashT -= dt;
     this.flash.visible = this.flashT > 0;
     this.light.intensity = this.flashT > 0 ? 6 : 0;
+    this.grenadeCd -= dt;
+    if (input.pressed('KeyG') && !P.inCar && !P.dead) this.throwGrenade();
+    // Sniper: when fully zoomed you look through the scope instead of at the gun
+    this.scoped = this.current === 'sniper' && this.ads > 0.85;
+    if (this.scoped) this.holder.visible = false;
     if (!this.current || P.inCar) return;
 
     const owned = inv.owned();
@@ -155,7 +168,15 @@ export class WeaponSystem {
     if (this.reloadT > 0) { this.reloadT -= dt; if (this.reloadT <= 0) this.finishReload(); }
     if (input.pressed('KeyR')) this.startReload();
 
-    const trigger = def.auto ? input.mouseDown : input.clicked;
+    let trigger = def.auto ? input.mouseDown : input.clicked;
+    // Minigun: barrels must spin up before it fires
+    if (def.spin) {
+      const want = input.mouseDown && this.reloadT <= 0 && this.switchT <= 0;
+      this.spinT = Math.max(0, Math.min(def.spin, this.spinT + (want ? dt : -dt * 1.2)));
+      const barrels = this.models[id].userData.barrels;
+      if (barrels) barrels.rotation.z += dt * 45 * (this.spinT / def.spin);
+      if (this.spinT < def.spin) trigger = false;
+    }
     if (trigger && this.cooldown <= 0 && this.reloadT <= 0 && this.switchT <= 0) {
       if (ws.mag > 0) {
         this.fire(id, def, ws, st);
@@ -182,8 +203,31 @@ export class WeaponSystem {
     this.holder.rotation.set(this.kick * (0.15 - 0.1 * a) + tilt * 0.3, 0, tilt * 0.4);
   }
 
+  throwGrenade() {
+    const inv = game.inventory;
+    if (this.grenadeCd > 0) return;
+    if (inv.grenades <= 0) { audio.click(); game.hud.toast('No grenades', 'warn', 'nade'); return; }
+    inv.grenades--;
+    this.grenadeCd = GRENADE.cooldown;
+    const cam = this.camera;
+    cam.updateMatrixWorld();
+    cam.getWorldPosition(_o);
+    cam.getWorldDirection(_d);
+    const P = game.player, v = GRENADE.speed;
+    game.projectiles.spawn({
+      x: _o.x + _d.x * 0.6, y: _o.y - 0.15, z: _o.z + _d.z * 0.6,
+      vx: _d.x * v + P.vel.x * 0.5, vy: _d.y * v + 6, vz: _d.z * v + P.vel.z * 0.5,
+      gravity: 22, owner: 'player', dmg: GRENADE.dmg * (game.progress?.dmgMult() ?? 1), splash: GRENADE.splash,
+      color: 0x9dff4a, size: 0.14, life: 3, grenade: true,
+    });
+    this.kick = 0.6;
+    audio.reload();
+    emit('grenade');
+  }
+
   fire(id, def, ws, st) {
     ws.mag--;
+    st = { ...st, dmg: st.dmg * (game.progress?.dmgMult() ?? 1) };
     const cam = this.camera;
     cam.updateMatrixWorld();
     cam.getWorldPosition(_o);

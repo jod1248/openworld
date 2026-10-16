@@ -165,3 +165,25 @@ button.primary, .tag { background: linear-gradient(90deg, #c86a1a, #b8306a); }
 /* dialog */
 #dialog { border-top: 2px solid var(--accent); }
 #dlg-name { color: var(--accent); font-size: 15px; letter-spacing: 2px; text-transform: uppercase; }
+
+/* ===== Expansion HUD: XP, combo, grenades, sniper scope ===== */
+#xp-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+#xp-level { font-family: "Orbitron", sans-serif; font-size: 11px; color: var(--accent); min-width: 44px; text-shadow: 0 0 8px rgba(255,179,71,0.6); }
+.bar.xp { flex: 1; height: 6px; margin: 0; }
+#xp-fill { background: linear-gradient(90deg, #ffb347, #ffe08a); box-shadow: 0 0 8px rgba(255, 200, 100, 0.7); }
+.nade-ico { width: 10px; height: 10px; border-radius: 50%; background: #9dff4a; display: inline-block; margin-left: 8px; box-shadow: 0 0 6px #9dff4a; }
+#combo { position: absolute; right: 24px; top: 46%; text-align: right; font-family: "Orbitron", sans-serif; font-weight: 800;
+  color: #fff; text-shadow: 0 0 14px var(--neon), 0 0 3px #000; transition: transform 0.1s; }
+#combo .n { font-size: 40px; color: var(--accent); }
+#combo .l { font-size: 12px; letter-spacing: 3px; color: #ffd0e8; }
+#combo .bar { width: 140px; height: 4px; margin: 4px 0 0 auto; transform: none; border: none; }
+#combo .bar div { background: var(--neon); }
+#scope { position: absolute; inset: 0; background: radial-gradient(circle at center, transparent 0, transparent 32vh, #000 32.2vh); }
+#scope .scope-ring { position: absolute; left: 50%; top: 50%; width: 64vh; height: 64vh; transform: translate(-50%, -50%); border-radius: 50%;
+  box-shadow: inset 0 0 40px rgba(0,0,0,0.8);
+  background:
+    linear-gradient(#000, #000) center / 1px 100% no-repeat,
+    linear-gradient(#000, #000) center / 100% 1px no-repeat,
+    radial-gradient(circle, #ff3030 0 2px, transparent 3px); }
+#car-info .bar.nitro { height: 6px; }
+#nitro-fill { background: linear-gradient(90deg, var(--cyan), var(--neon)); box-shadow: 0 0 8px var(--cyan); }

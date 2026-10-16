@@ -23,6 +23,7 @@ export function saveGame() {
     quests: game.quests.state,
     flags: game.flags,
     liberated: game.cities.filter(c => c.liberated).map(c => c.id),
+    progress: game.progress.serialize(),
   };
   try { localStorage.setItem(KEY, JSON.stringify(data)); } catch { /* storage unavailable */ }
 }

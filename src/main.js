@@ -19,6 +19,8 @@ import { Tutorial } from './tutorial.js';
 import { HUD } from './hud.js';
 import { audio } from './audio.js';
 import { createComposer } from './post.js';
+import { Progress } from './progress.js';
+import { WorldEvents } from './events.js';
 import { hasSave, loadSave, saveGame, clearSave } from './save.js';
 
 const $ = id => document.getElementById(id);
@@ -33,7 +35,7 @@ renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.15;
 $('game').appendChild(renderer.domElement);
 const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.05, 2600);
+const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.05, 3400);
 camera.rotation.order = 'YXZ';
 scene.add(camera);
 window.addEventListener('resize', () => {
@@ -63,9 +65,12 @@ game.npcs = new NPCManager();
 game.quests = new QuestSystem();
 game.regions = new Regions();
 game.tutorial = new Tutorial();
+game.progress = new Progress();
+game.events = new WorldEvents();
 game.npcs.init();
 game.vehicles.init();
 game.regions.init();
+game.events.init();
 // Buildings, walls, cars and people cast and catch shadows (glowing / see-through things don't)
 scene.traverse(o => {
   if (!o.isMesh || o.isInstancedMesh) return;
@@ -176,9 +181,11 @@ function continueGame() {
   for (const id of d.liberated || []) game.regions.liberate(getCity(id), true);
   if (game.flags.bossDead) { game.env.ship.visible = false; }
   game.quests.load(d.quests);
+  game.progress.load(d.progress);
+  game.events.syncRelics();
   const P = game.player;
   P.spawn(d.player.x, d.player.z, d.player.yaw);
-  P.health = Math.max(30, d.player.health);
+  P.health = Math.min(P.maxHealth, Math.max(30, d.player.health));
   P.armor = d.player.armor || 0;
   const owned = game.inventory.owned();
   if (owned.length) game.weapons.equip(owned[owned.length - 1]);
@@ -235,7 +242,7 @@ game.debug = {
   give() {
     for (const id of WEAPON_ORDER) game.inventory.addWeapon(id, true);
     for (const k in AMMO_INFO) game.inventory.ammo[k] = AMMO_INFO[k].max;
-    game.inventory.cores += 5000; game.inventory.parts += 100; game.inventory.medkits += 10;
+    game.inventory.cores += 5000; game.inventory.parts += 100; game.inventory.medkits += 10; game.inventory.addGrenades(6);
     game.weapons.equip('rifle');
   },
   god() { game.player.god = !game.player.god; return game.player.god; },
@@ -269,6 +276,7 @@ function frame() {
     game.quests.update(dt);
     game.tutorial.update(dt);
     game.effects.update(dt);
+    game.events.update(dt);
     if (!P.dead) updateInteract();
     saveT -= dt;
     if (saveT <= 0) { saveT = 10; saveGame(); }

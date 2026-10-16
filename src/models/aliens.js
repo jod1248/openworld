@@ -201,6 +201,49 @@ const BUILD = {
     }
   },
 
+  bomber(g, body, def, anim) {
+    const dark = phong(shade(def.color, 0.45));
+    // stubby legs scurrying under a huge glowing sac
+    anim.legs = [];
+    for (const z of [-0.2, 0.2]) for (const sx of [-1, 1]) {
+      const hip = pivot(g, sx * 0.25, 0.45, z);
+      part(hip, CAPS(0.05, 0.3), dark, 1, 1, 1, sx * 0.08, -0.2, 0, 0, 0, sx * 0.4);
+      anim.legs.push(hip);
+    }
+    part(g, S, body, 0.38, 0.3, 0.45, 0, 0.55, 0.05);
+    part(g, S, dark, 0.22, 0.2, 0.25, 0, 0.6, -0.42);                    // head
+    eyes(g, EYE_R, [[-0.09, 0.66, -0.62], [0.09, 0.66, -0.62]], 0.045);
+    for (const sx of [-1, 1]) part(g, CONE, dark, 0.04, 0.18, 0.04, sx * 0.1, 0.5, -0.64, -1.8, 0, sx * 0.3); // fangs
+    // volatile sac (pulses faster the closer it gets to you)
+    anim.pulse = part(g, S, glowMat(0xff7a1a, 2.2), 0.42, 0.42, 0.42, 0, 1.0, 0.15);
+    for (let i = 0; i < 5; i++) {
+      const a = (i / 5) * Math.PI * 2;
+      part(g, new THREE.TorusGeometry(1, 0.04, 6, 20, Math.PI), dark, 0.45, 0.45, 0.45, 0, 1.0, 0.15, 0, a, Math.PI / 2);
+    }
+  },
+
+  sentinel(g, body, def, anim) {
+    const dark = phong(shade(def.color, 0.45), { shininess: 90 }), bone = phong(0xcfc6b0);
+    // roots gripping the ground
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * Math.PI * 2;
+      part(g, CAPS(0.16, 1.1), dark, 1, 1, 1, Math.cos(a) * 0.9, 0.3, Math.sin(a) * 0.9, Math.sin(a) * 1.1, 0, -Math.cos(a) * 1.1);
+    }
+    // ribbed trunk
+    part(g, new THREE.CylinderGeometry(0.45, 0.8, 3.2, 10), body, 1, 1, 1, 0, 1.7, 0);
+    for (let i = 0; i < 4; i++) part(g, new THREE.TorusGeometry(1, 0.12, 6, 18), bone, 0.75 - i * 0.08, 0.75 - i * 0.08, 0.75 - i * 0.08, 0, 0.7 + i * 0.75, 0, Math.PI / 2);
+    // rotating head with a single cannon eye
+    const head = pivot(g, 0, 3.6, 0);
+    part(head, S, body, 0.75, 0.6, 0.75, 0, 0, 0);
+    part(head, new THREE.TorusGeometry(1, 0.15, 8, 20), dark, 0.45, 0.45, 0.45, 0, 0, -0.7);
+    part(head, S, EYE_C, 0.3, 0.3, 0.2, 0, 0, -0.72);
+    for (let i = 0; i < 4; i++) {
+      const a = (i / 4) * Math.PI * 2 + 0.4;
+      part(head, CONE, bone, 0.1, 0.8, 0.1, Math.cos(a) * 0.5, 0.45, Math.sin(a) * 0.5, Math.sin(a) * 0.5, 0, -Math.cos(a) * 0.5);
+    }
+    anim.spin = head;
+  },
+
   overseer(g, body, def, anim) {
     const dark = phong(shade(def.color, 0.55), { shininess: 80 });
     const vein = glowMat(0xb040ff, 1.6);

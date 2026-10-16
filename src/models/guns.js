@@ -246,6 +246,67 @@ const BUILDERS = {
     }
     return [0, 0.06, -0.72];
   },
+
+  sniper(g, arms) {
+    const body = phong(0x3a3e34, 20);
+    box(g, body, 0.05, 0.07, 0.3, 0, 0.02, -0.02);                       // receiver
+    tube(g, M.steel(), 0.011, 0.62, 0, 0.035, -0.45);                    // long barrel
+    tube(g, M.black(), 0.02, 0.09, 0, 0.035, -0.78, 8);                  // muzzle brake
+    for (const s of [-1, 1]) box(g, M.black(), 0.008, 0.014, 0.05, s * 0.02, 0.035, -0.78);
+    box(g, body, 0.056, 0.05, 0.3, 0, 0.0, -0.3);                        // forend
+    for (const s of [-1, 1]) {                                           // folded bipod legs
+      box(g, M.black(), 0.012, 0.012, 0.2, s * 0.02, -0.03, -0.35);
+    }
+    // big scope on rings
+    tube(g, M.black(), 0.026, 0.26, 0, 0.115, -0.04, 18);
+    tube(g, M.black(), 0.036, 0.07, 0, 0.115, -0.2, 18, 0.026);          // objective bell
+    tube(g, M.black(), 0.032, 0.05, 0, 0.115, 0.11, 18, 0.026);          // eyepiece
+    tube(g, new THREE.MeshPhongMaterial({ color: 0x3a6aff, shininess: 150, specular: 0xffffff }), 0.031, 0.004, 0, 0.115, -0.236, 18);
+    box(g, M.black(), 0.02, 0.025, 0.02, 0, 0.145, -0.04);               // turret
+    box(g, M.black(), 0.025, 0.02, 0.02, 0.03, 0.115, -0.04);
+    for (const z of [-0.1, 0.03]) box(g, M.black(), 0.03, 0.05, 0.02, 0, 0.075, z);
+    box(g, M.black(), 0.036, 0.14, 0.05, 0, -0.08, 0.1, -0.25);          // grip
+    box(g, body, 0.05, 0.1, 0.32, 0, -0.01, 0.3, 0.06);                  // stock
+    box(g, body, 0.05, 0.04, 0.12, 0, 0.06, 0.22);                       // cheek rest
+    box(g, M.black(), 0.054, 0.11, 0.02, 0, -0.02, 0.46, 0.06);
+    box(g, M.black(), 0.03, 0.08, 0.05, 0, -0.07, -0.05);                // mag
+    box(g, M.chrome(), 0.012, 0.012, 0.05, 0.035, 0.04, 0.06);           // bolt handle
+    if (arms) {
+      hand(g, [0.004, -0.06, 0.1], [0.16, -0.3, 0.46]);
+      hand(g, [-0.004, -0.04, -0.3], [-0.22, -0.33, 0.0]);
+    }
+    return [0, 0.035, -0.84];
+  },
+
+  minigun(g, arms) {
+    const body = phong(0x4a4a50, 50);
+    box(g, body, 0.13, 0.13, 0.26, 0, -0.01, 0.08);                      // motor housing
+    box(g, M.yellow(), 0.132, 0.02, 0.1, 0, 0.05, 0.08);                 // hazard stripe
+    tube(g, M.black(), 0.075, 0.06, 0, 0.0, -0.08, 16);                  // front plate
+    // six spinning barrels
+    const barrels = new THREE.Group();
+    barrels.position.set(0, 0, -0.1);
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * Math.PI * 2;
+      tube(barrels, M.steel(), 0.011, 0.5, Math.cos(a) * 0.04, Math.sin(a) * 0.04, -0.25, 8);
+    }
+    for (const z of [-0.12, -0.45]) tube(barrels, M.black(), 0.058, 0.02, 0, 0, z, 16);
+    tube(barrels, M.black(), 0.012, 0.52, 0, 0, -0.26, 8);
+    g.add(barrels);
+    g.userData.barrels = barrels;
+    box(g, M.black(), 0.1, 0.12, 0.12, -0.11, -0.04, 0.12);              // ammo box
+    box(g, M.olive(), 0.104, 0.05, 0.124, -0.11, 0.0, 0.12);
+    for (let i = 0; i < 6; i++) box(g, M.brass(), 0.02, 0.012, 0.03, -0.06 + i * 0.012, 0.03 - i * 0.012, 0.12); // belt
+    box(g, M.black(), 0.04, 0.13, 0.05, 0, -0.12, 0.12, -0.2);           // rear grip
+    box(g, M.black(), 0.025, 0.025, 0.2, 0, 0.11, 0.05);                 // carry handle
+    box(g, M.black(), 0.025, 0.06, 0.025, 0, 0.08, -0.04);
+    box(g, M.black(), 0.025, 0.06, 0.025, 0, 0.08, 0.14);
+    if (arms) {
+      hand(g, [0.004, -0.11, 0.13], [0.16, -0.32, 0.46]);
+      hand(g, [-0.03, 0.12, 0.05], [-0.22, -0.2, 0.25]);
+    }
+    return [0, 0.0, -0.62];
+  },
 };
 
 export function buildGunModel(id, arms = false) {
@@ -256,11 +317,12 @@ export function buildGunModel(id, arms = false) {
   const [sx, sy, fov] = {
     pistol: [0, 0.064, 58], shotgun: [0, 0.068, 60], smg: [0, 0.098, 52],
     rifle: [0, 0.11, 42], plasma: [0, 0.106, 50], rocket: [-0.1, 0.12, 48],
+    sniper: [0, 0.115, 14], minigun: [0, 0.14, 58],
   }[id];
   g.userData.sight = { x: sx, y: sy, fov };
   if (arms) {
     // Held in first person: long guns sit further out so the stock doesn't fill the screen
-    const reach = { pistol: 0.02, shotgun: 0.26, smg: 0.12, rifle: 0.24, plasma: 0.16, rocket: 0.2 }[id];
+    const reach = { pistol: 0.02, shotgun: 0.26, smg: 0.12, rifle: 0.24, plasma: 0.16, rocket: 0.2, sniper: 0.3, minigun: 0.3 }[id];
     g.position.set(0.02, 0.02, -reach);
     g.scale.setScalar(0.88);
   }

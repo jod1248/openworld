@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { game, emit, removeFrom } from './game.js';
 import { rand, pick } from './util.js';
 import { audio } from './audio.js';
-import { damagePlayerOrCar } from './projectiles.js';
+import { damagePlayerOrCar, explode } from './projectiles.js';
 import { buildAlienMesh } from './models/aliens.js';
 
 export const ALIEN_TYPES = {
@@ -12,6 +12,8 @@ export const ALIEN_TYPES = {
   brute: { name: 'Brute', hp: 320, speed: 3.6, dmg: 22, range: 2.8, cd: 1.4, radius: 1.2, height: 3.2, hitR: 1.5, hitY: 1.7, cores: 10, aggro: 55, chargeDmg: 35, color: 0x7a3b3b },
   stalker: { name: 'Stalker', hp: 90, speed: 6.5, dmg: 16, range: 2.0, cd: 0.9, radius: 0.5, height: 2.3, hitR: 0.75, hitY: 1.2, cores: 6, aggro: 45, color: 0x4a7cff },
   flyer: { name: 'Flyer', hp: 70, speed: 10, dmg: 9, range: 40, cd: 1.6, radius: 0.8, height: 1, hitR: 1.0, hitY: 0, cores: 5, aggro: 70, fly: 9, color: 0x8a5a2b },
+  bomber: { name: 'Bomber', hp: 28, speed: 9.5, dmg: 70, range: 2.2, cd: 1, radius: 0.5, height: 1.3, hitR: 0.75, hitY: 0.7, cores: 3, aggro: 60, explode: 5.5, color: 0xc8601a },
+  sentinel: { name: 'Sentinel', hp: 280, speed: 0, dmg: 7, range: 75, cd: 2.4, radius: 1.1, height: 4.8, hitR: 1.3, hitY: 3.4, cores: 12, aggro: 80, color: 0x2a4a6a },
   overseer: { name: 'The Overseer', hp: 6000, speed: 2.5, dmg: 14, range: 70, cd: 2.4, radius: 4, height: 6, hitR: 4.5, hitY: 0, cores: 300, aggro: 140, fly: 8, boss: true, color: 0x40204f },
 };
 
@@ -90,8 +92,13 @@ export class Alien {
     const c = this.sphere();
     game.effects.burst(new THREE.Vector3(c.x, c.y, c.z), 0x7dff3a, this.def.boss ? 60 : 16, this.def.boss ? 14 : 6, 0.8);
     if (this.def.boss) game.effects.explosion(new THREE.Vector3(c.x, c.y, c.z), 12);
-    game.pickups.dropLoot(this);
+    if (!this.boom) game.pickups.dropLoot(this);
     emit('kill', this);
+    if (this.def.explode) {
+      // reached you: hurts you. Shot first: blast only hurts other aliens (chain reactions!)
+      const pt = new THREE.Vector3(c.x, c.y, c.z);
+      setTimeout(() => explode(pt, this.def.explode, this.def.dmg * this.dmgMult, { fromPlayer: !this.boom, hurtPlayer: this.boom }), 60);
+    }
   }
 
   attack(dmg) {
@@ -152,6 +159,27 @@ export class Alien {
           if (dist > reach * 0.7) { mvx = nx; mvz = nz; }
           if (dist < reach && this.cd <= 0) { this.attack(def.dmg); this.cd = def.cd; }
           break;
+        case 'bomber': {
+          // sprint straight at you and blow up
+          if (dist > reach * 0.5) { mvx = nx; mvz = nz; }
+          speed *= 1 + Math.max(0, 1 - dist / 25) * 0.4;
+          if (dist < reach && !P.dead) { this.boom = true; this.die(); return true; }
+          break;
+        }
+        case 'sentinel': {
+          // rooted tower: fires three-shot laser bursts from long range
+          if (dist < def.range && this.cd <= 0) {
+            this.burst = 3;
+            this.cd = def.cd * rand(0.9, 1.2);
+          }
+          this.burstT = (this.burstT || 0) - dt;
+          if (this.burst > 0 && this.burstT <= 0) {
+            this.burst--;
+            this.burstT = 0.16;
+            this.shootAt(tx + rand(-0.6, 0.6), ty, tz + rand(-0.6, 0.6), 55, 0x55ccff);
+          }
+          break;
+        }
         case 'stalker': {
           if (dist > reach * 0.7) { mvx = nx; mvz = nz; }
           if (dist < reach && this.cd <= 0) { this.attack(def.dmg); this.cd = def.cd; }
@@ -288,6 +316,8 @@ export class Alien {
     if (a.tentacles) a.tentacles.forEach(t => { t.pivot.rotation.x = Math.sin(this.t * 1.5 + t.a) * 0.4; t.pivot.rotation.z = Math.cos(this.t * 1.2 + t.a) * 0.4; });
     if (a.shield) a.shield.visible = !game.flags.shieldDown;
     if (a.eye) a.eye.scale.setScalar(0.5 + Math.sin(this.t * 3) * 0.08);
+    if (a.pulse) a.pulse.scale.setScalar(0.42 + Math.sin(this.t * (8 + 14 * Math.max(0, 1 - Math.hypot(this.pos.x - game.player.pos.x, this.pos.z - game.player.pos.z) / 25))) * 0.06);
+    if (a.spin) { a.spin.rotation.y = this.aggro ? 0 : Math.sin(this.t * 0.6) * 0.8; a.spin.position.y = 3.6 + (this.burst > 0 ? Math.sin(this.t * 60) * 0.04 : 0); }
     this.flashT -= dt;
     this.body.emissive.setHex(this.flashT > 0 ? 0xffffff : 0x000000);
     return true;

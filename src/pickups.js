@@ -9,6 +9,7 @@ const KINDS = {
   medkit: { color: 0xff4a4a, geo: 'box', size: 0.4, auto: true },
   parts: { color: 0x4ad8ff, geo: 'box', size: 0.32, auto: true },
   armor: { color: 0x4a7dff, geo: 'box', size: 0.45, auto: true },
+  grenade: { color: 0x9dff4a, geo: 'sphere', size: 0.22, auto: true },
   weapon: { color: 0xffffff, auto: false },
   supply: { color: 0xc8a050, geo: 'box', size: 0.8, auto: false },
 };
@@ -17,7 +18,7 @@ export class Pickups {
   constructor(scene) {
     this.scene = scene;
     this.list = [];
-    this.geos = { box: new THREE.BoxGeometry(1, 1, 1), oct: new THREE.OctahedronGeometry(1, 0) };
+    this.geos = { box: new THREE.BoxGeometry(1, 1, 1), oct: new THREE.OctahedronGeometry(1, 0), sphere: new THREE.SphereGeometry(1, 10, 8) };
     this.mats = {};
     this.beamGeo = new THREE.CylinderGeometry(0.08, 0.08, 8, 6, 1, true).translate(0, 4, 0);
   }
@@ -66,7 +67,7 @@ export class Pickups {
     const { pos, def, level } = alien;
     const x = pos.x, z = pos.z;
     const r = () => (Math.random() - 0.5) * 1.6;
-    const cores = Math.max(1, Math.round(def.cores * (1 + 0.25 * (level - 1)) * (0.8 + Math.random() * 0.4)));
+    const cores = Math.max(1, Math.round(def.cores * (1 + 0.25 * (level - 1)) * (0.8 + Math.random() * 0.4) * (game.progress?.comboMult() ?? 1)));
     this.spawn('cores', x + r(), z + r(), { n: cores }, 0.5);
     if (Math.random() < (def.boss ? 1 : 0.35)) {
       const owned = game.inventory.owned();
@@ -74,6 +75,7 @@ export class Pickups {
       if (id) this.spawn('ammo', x + r(), z + r(), { type: WEAPONS[id].ammo, n: AMMO_INFO[WEAPONS[id].ammo].drop });
     }
     if (Math.random() < 0.06) this.spawn('medkit', x + r(), z + r());
+    if (Math.random() < 0.07 || def.boss) this.spawn('grenade', x + r(), z + r(), { n: def.boss ? 3 : 1 });
     if (Math.random() < 0.05 + 0.04 * level || def.boss) this.spawn('parts', x + r(), z + r(), { n: def.boss ? 10 : 1 });
   }
 
@@ -114,6 +116,7 @@ export class Pickups {
       case 'cores': inv.cores += d.n; game.hud.loot(`+${d.n} Cores`); break;
       case 'ammo': inv.addAmmo(d.type, d.n); game.hud.loot(`+${d.n} ${AMMO_INFO[d.type].name}`); break;
       case 'medkit': inv.medkits++; game.hud.loot('+1 Medkit'); break;
+      case 'grenade': inv.addGrenades(d.n || 1); game.hud.loot(`+${d.n || 1} Grenade`); break;
       case 'parts': inv.parts += d.n; game.hud.loot(`+${d.n} Upgrade part${d.n > 1 ? 's' : ''}`); break;
       case 'armor': { const P = game.player; P.armor = Math.min(P.maxArmor, P.armor + (d.n || 50)); game.hud.loot('+Armor'); break; }
       case 'weapon': inv.addWeapon(d.id); break;

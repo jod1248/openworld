@@ -5,6 +5,7 @@ import { getCity } from './world/cities.js';
 export const NEST_POS = { x: 170, z: 560 };
 export const WHEELS_POS = { x: 150, z: 420 };
 export const GARAGE_POS = { x: -24, z: 584 };
+export const FRONTIER = ['cinderfall', 'saltmarsh', 'hollowpeak'];
 export const SUPPLY_POS = [[-140, 470], [120, 680], [-160, 640], [90, 440], [-60, 700]];
 
 const nearest = (list, P) => {
@@ -76,6 +77,42 @@ export const QUESTS = {
       game.hud.toast('The world is open. Explore, liberate towns, find new weapons.', 'big');
     },
   },
+  relic_hunt: {
+    title: 'Relic Hunter', giver: 'tess',
+    offer: "Ever seen those golden beams of light out in the wilds? <b>Alien relics</b>. The aliens guard them like treasure. Find <b>five</b> and I'll make it worth your while. Rumour says there are <b>25</b> out there, and something special happens if you find them all.",
+    progress: 'Look for the faint golden beams of light. Relics show on your minimap when you get close.',
+    turnIn: "Five relics! They hum when you hold them, don't they? Keep hunting, there are more out there.",
+    objectives: [{ type: 'collect', item: 'relic', count: 5, text: 'Find alien relics', wp: () => game.events.nearestRelic() }],
+    reward: { cores: 120, parts: 3, grenades: 2 },
+  },
+  pod_hunter: {
+    title: 'Pod Busters', giver: 'lin', requires: ['lost_supplies'],
+    offer: "The aliens are dropping <b>pods</b> from orbit now. Each one carries a strike team and a sealed <b>loot cache</b>. Head out into the wilds, wait for one to fall, wipe out the crew and crack <b>two</b> caches. I'll pay in grenades.",
+    progress: 'Pods only fall out in the wilds, away from town. Kill every alien around one, then open its cache.',
+    turnIn: 'Two caches cracked! Here, grenades, as promised. Throw them with G.',
+    objectives: [{ type: 'destroy', tag: 'pod', count: 2, text: 'Open drop pod caches', wp: () => game.events.nearestPod() }],
+    reward: { grenades: 6, parts: 3, cores: 80 },
+  },
+  big_game: {
+    title: 'Big Game', giver: 'harlan', requires: ['clear_square'],
+    offer: "I used to hunt deer. Now I hunt <b>Brutes</b>. Too old for it, though. Take down <b>three Brutes</b> and <b>five Bombers</b>, those orange ones that blow up. Tip: shoot a Bomber when it's next to its friends.",
+    progress: 'Brutes and Bombers roam the outer wilds and the alien outposts. Bombers explode, so hit them from range.',
+    turnIn: "Ha! That's my kind of hunting. Here's my old stash.",
+    objectives: [
+      { type: 'kill', tag: 'brute', count: 3, text: 'Kill Brutes' },
+      { type: 'kill', tag: 'bomber', count: 5, text: 'Kill Bombers' },
+    ],
+    reward: { cores: 150, parts: 4, grenades: 4, armor: 50 },
+  },
+  frontier: {
+    title: 'The Far Frontier', giver: 'reyes', requires: ['outposts'],
+    offer: "Scouts found three more outposts out in the <b>alien blight</b>, on the far edges of the map: <b>Cinderfall</b> to the east, <b>Saltmarsh</b> to the west and <b>Hollowpeak</b> to the north. Sentinels, Bombers, the works. Free <b>one</b> of them. Cinderfall has a sniper rifle, Saltmarsh has a minigun.",
+    progress: 'The frontier outposts are at the far edges of the map. Watch out for Sentinel towers.',
+    turnIn: "You took a frontier outpost! The aliens didn't think anyone could reach that far.",
+    objectives: [{ type: 'frontier', count: 1, text: 'Liberate a frontier outpost',
+      wp: () => nearest(game.cities.filter(c => FRONTIER.includes(c.id) && !c.liberated), game.player) }],
+    reward: { cores: 300, parts: 8, grenades: 4 },
+  },
   overseer: {
     title: 'Fall of the Overseer', giver: 'reyes', requires: ['outposts'],
     offer: 'The Overseer commands this invasion from the <b>heart of the Metropolis</b>, right under that beam. Upgrade your weapons, stock up, and end this.',
@@ -122,7 +159,11 @@ export class QuestSystem {
     for (const id in QUESTS) {
       const st = this.state[id];
       if (st.status !== 'active') continue;
-      QUESTS[id].objectives.forEach((o, i) => { if (o.type === 'liberate') st.progress[i] = Math.min(o.count, n); });
+      const far = game.cities.filter(c => c.liberated && FRONTIER.includes(c.id)).length;
+      QUESTS[id].objectives.forEach((o, i) => {
+        if (o.type === 'liberate') st.progress[i] = Math.min(o.count, n);
+        if (o.type === 'frontier') st.progress[i] = Math.min(o.count, far);
+      });
       this.checkDone(id);
     }
   }

@@ -145,8 +145,10 @@ export class Tutorial {
   finish() {
     this.active = false;
     game.flags.tutorialDone = true;
+    game.inventory.addGrenades(3);
     game.hud.setTutorial(null);
     game.hud.toast('Training complete! Talk to the people of Ridgeport with a <b style="color:#ffd34a">!</b> above them.', 'big');
+    game.hud.toast('You got 3 grenades. Press <b>G</b> to throw one.', 'quest');
     audio.quest();
     game.save();
   }

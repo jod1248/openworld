@@ -52,10 +52,14 @@ export class Car {
       steer = (input.down('KeyA') ? 1 : 0) - (input.down('KeyD') ? 1 : 0);
       hb = input.down('Space');
     }
-    if (throttle > 0) along += (along < 0 ? 40 : 20) * dt;
+    // Nitro: hold Shift for a burst of speed; the tank refills slowly
+    const nitroOn = driving && throttle > 0 && game.vehicles.nitro > 0 && (input.down('ShiftLeft') || input.down('ShiftRight'));
+    if (driving) game.vehicles.nitro = clamp(game.vehicles.nitro + (nitroOn ? -dt / 3 : dt / 12), 0, 1);
+    this.boosting = nitroOn;
+    if (throttle > 0) along += (along < 0 ? 40 : nitroOn ? 45 : 20) * dt;
     else if (throttle < 0) along -= (along > 0 ? 40 : 12) * dt;
     else along *= Math.exp(-0.5 * dt);
-    along = clamp(along, -14, 46);
+    along = clamp(along, -14, nitroOn ? 70 : Math.max(46, along - 30 * dt));
     if (hb) along *= Math.exp(-1.6 * dt);
     if (!driving) along *= Math.exp(-3 * dt);
     lat *= Math.exp(-(hb ? 1.2 : 9) * dt);
@@ -107,6 +111,10 @@ export class Car {
     }
 
     // Visuals
+    if (this.boosting) {
+      const back = new THREE.Vector3(this.pos.x - fx * 2.5, 0.5, this.pos.z - fz * 2.5);
+      game.effects.burst(back, Math.random() < 0.5 ? 0x5ef0ff : 0xff4fa3, 2, 2, 0.3, 0, 1.5);
+    }
     this.mesh.position.copy(this.pos);
     this.mesh.rotation.y = h;
     this.mesh.rotation.z = clamp(-lat * 0.01, -0.08, 0.08);
@@ -146,6 +154,7 @@ export class Car {
 export class Vehicles {
   constructor() {
     this.cars = [];
+    this.nitro = 1;
     this.camYaw = 0;
     this.camPos = new THREE.Vector3();
     this.shownHelp = false;
@@ -197,7 +206,7 @@ export class Vehicles {
     audio.engine(true, 0);
     if (!this.shownHelp) {
       this.shownHelp = true;
-      game.hud.toast('W/S accelerate &amp; brake · A/D steer · SPACE handbrake · F exit', 'quest');
+      game.hud.toast('W/S accelerate &amp; brake · A/D steer · SPACE handbrake · SHIFT nitro · F exit', 'quest');
     }
     emit('enterCar', car);
   }

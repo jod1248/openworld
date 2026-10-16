@@ -4,7 +4,7 @@ import { mulberry32 } from '../util.js';
 import { WORLD_HALF } from './world.js';
 
 // Is (x, z) open countryside: outside every city and away from roads?
-function isOpen(x, z, cities, roads) {
+export function isOpen(x, z, cities, roads) {
   for (const c of cities) {
     if (Math.abs(x - c.x) < c.size + 10 && Math.abs(z - c.z) < c.size + 10) return false;
   }
@@ -111,8 +111,8 @@ function buildGrass(group, pts, rnd) {
 function buildClouds(scene, rnd) {
   const geos = [];
   const puff = new THREE.IcosahedronGeometry(1, 1);
-  for (let i = 0; i < 45; i++) {
-    const a = rnd() * Math.PI * 2, d = 260 + rnd() * 1100;
+  for (let i = 0; i < 70; i++) {
+    const a = rnd() * Math.PI * 2, d = 260 + rnd() * 1500;
     const cx = Math.cos(a) * d, cz = Math.sin(a) * d, cy = 150 + rnd() * 50;
     const n = 5 + Math.floor(rnd() * 6), w = 25 + rnd() * 30;
     for (let j = 0; j < n; j++) {
@@ -128,13 +128,39 @@ function buildClouds(scene, rnd) {
   return clouds;
 }
 
+// Glowing alien crystal clusters growing out of the blight on the far frontier
+function buildCrystals(group, world, pts, rnd) {
+  const geo = new THREE.OctahedronGeometry(1, 0);
+  const mat = new THREE.MeshLambertMaterial({ color: 0xb050ff, emissive: 0x8a2aff, emissiveIntensity: 1.6, flatShading: true });
+  const per = 4;
+  const mesh = instanced(geo, mat, pts.length * per);
+  const col = new THREE.Color();
+  let k = 0;
+  for (const p of pts) {
+    const big = 1 + rnd() * 1.6;
+    for (let j = 0; j < per; j++) {
+      const ox = (rnd() - 0.5) * 3 * big, oz = (rnd() - 0.5) * 3 * big;
+      const h = big * (1.2 + rnd() * 2.5), w = big * (0.35 + rnd() * 0.3);
+      q.setFromEuler(new THREE.Euler((rnd() - 0.5) * 0.7, rnd() * 6, (rnd() - 0.5) * 0.7));
+      m4.compose(v.set(p.x + ox, h * 0.45, p.z + oz), q, s.set(w, h, w));
+      mesh.setMatrixAt(k, m4);
+      mesh.setColorAt(k++, col.setHSL(0.75 + rnd() * 0.1, 0.7, 0.55 + rnd() * 0.2));
+    }
+    world.addBox(p.x - big, 0, p.z - big, p.x + big, big * 3, p.z + big, 'crystal');
+  }
+  group.add(mesh);
+}
+
+const inBlight = p => Math.hypot(p.x, p.z) > 1060;
+
 export function buildNature(world, scene, cities, roads) {
   const rnd = mulberry32(1234);
   const group = new THREE.Group();
   scene.add(group);
-  buildTrees(group, world, scatter(1400, rnd, cities, roads), rnd);
-  buildRocks(group, world, scatter(700, rnd, cities, roads), rnd);
-  buildGrass(group, scatter(60000, rnd, cities, roads), rnd);
+  buildTrees(group, world, scatter(2800, rnd, cities, roads).filter(p => !inBlight(p) || rnd() < 0.12), rnd);
+  buildRocks(group, world, scatter(1500, rnd, cities, roads), rnd);
+  buildGrass(group, scatter(90000, rnd, cities, roads).filter(p => !inBlight(p)), rnd);
+  buildCrystals(group, world, scatter(1600, rnd, cities, roads).filter(inBlight).slice(0, 420), rnd);
   const clouds = buildClouds(scene, rnd);
   return {
     update(dt) { clouds.rotation.y += dt * 0.003; },

@@ -1,5 +1,5 @@
 import { game, emit } from './game.js';
-import { WEAPONS, WEAPON_ORDER, AMMO_INFO, UPGRADE_TRACKS, weaponStats, upgradeCost } from './weapons.js';
+import { WEAPONS, WEAPON_ORDER, AMMO_INFO, UPGRADE_TRACKS, GRENADE, weaponStats, upgradeCost } from './weapons.js';
 import { audio } from './audio.js';
 
 export class Inventory {
@@ -18,7 +18,8 @@ export class Inventory {
 
   reset() {
     this.weapons = {};
-    this.ammo = { light: 0, shells: 0, heavy: 0, cells: 0, rockets: 0 };
+    this.ammo = { light: 0, shells: 0, heavy: 0, cells: 0, rockets: 0, sniper: 0 };
+    this.grenades = 0;
     this.cores = 0;
     this.parts = 0;
     this.medkits = 0;
@@ -38,6 +39,8 @@ export class Inventory {
     }
     emit('weapon', id);
   }
+
+  addGrenades(n) { this.grenades = Math.min(GRENADE.max, this.grenades + n); }
 
   addAmmo(type, n) { this.ammo[type] = Math.min(AMMO_INFO[type].max, this.ammo[type] + n); }
 
@@ -72,6 +75,7 @@ export class Inventory {
     if (r.cores) { this.cores += r.cores; bits.push(`${r.cores} cores`); }
     if (r.parts) { this.parts += r.parts; bits.push(`${r.parts} parts`); }
     if (r.medkits) { this.medkits += r.medkits; bits.push(`${r.medkits} medkits`); }
+    if (r.grenades) { this.addGrenades(r.grenades); bits.push(`${r.grenades} grenades`); }
     if (r.armor) { const P = game.player; P.armor = Math.min(P.maxArmor, P.armor + r.armor); bits.push('armor vest'); }
     if (r.ammo) for (const k in r.ammo) this.addAmmo(k, r.ammo[k]);
     if (r.flags) Object.assign(game.flags, r.flags);
@@ -80,7 +84,7 @@ export class Inventory {
   }
 
   serialize() {
-    return { weapons: this.weapons, ammo: this.ammo, cores: this.cores, parts: this.parts, medkits: this.medkits };
+    return { weapons: this.weapons, ammo: this.ammo, cores: this.cores, parts: this.parts, medkits: this.medkits, grenades: this.grenades };
   }
 
   load(d) {
@@ -90,6 +94,7 @@ export class Inventory {
     this.cores = d.cores || 0;
     this.parts = d.parts || 0;
     this.medkits = d.medkits || 0;
+    this.grenades = d.grenades || 0;
   }
 
   renderBackpack() {
@@ -102,6 +107,13 @@ export class Inventory {
     left += row('<span class="part-ico"></span> Upgrade parts', this.parts);
     left += row('<span class="med-ico">+</span> Medkits', this.medkits,
       `<button data-action="medkit" ${this.medkits > 0 && P.health < P.maxHealth ? '' : 'disabled'}>Use</button>`);
+    left += row('<span class="nade-ico"></span> Grenades (G)', `${this.grenades} / ${GRENADE.max}`);
+    if (game.progress) {
+      const pr = game.progress;
+      left += row('Level', `${pr.level} <span class="hint">(${pr.xp} / ${pr.need()} XP)</span>`);
+      left += row('Alien relics', `${pr.relics.length} / 25`);
+      left += row('Drop pods cleared', pr.podsCleared);
+    }
     left += '<h3>Ammo</h3>';
     for (const k in AMMO_INFO) left += row(AMMO_INFO[k].name, `${this.ammo[k]} / ${AMMO_INFO[k].max}`);
     left += '<h3>Quests</h3>';

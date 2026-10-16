@@ -19,18 +19,25 @@ export const CITY_DEFS = [
   {
     id: 'metropolis', name: 'Central Metropolis', x: 0, z: 0, size: 260, block: 36, street: 14, minH: 16, maxH: 110,
     plaza: 45, tallCenter: true, palette: 'city', level: 5, seed: 7, quota: 22,
-    aliens: { crawler: 2, spitter: 2, brute: 1, stalker: 1.5, flyer: 1.5, drone: 1 },
+    aliens: { crawler: 2, spitter: 2, brute: 1, stalker: 1.5, flyer: 1.5, drone: 1, bomber: 1.5, sentinel: 1 },
   },
   { ...OUTPOST, id: 'ashfall', name: 'Ashfall', ...polar(120, 620), level: 2, seed: 21,
-    aliens: { drone: 2, crawler: 3, spitter: 1 }, reward: { weapon: 'smg', cores: 60, parts: 2, ammo: { light: 90 } } },
+    aliens: { drone: 2, crawler: 3, spitter: 1, bomber: 0.6 }, reward: { weapon: 'smg', cores: 60, parts: 2, ammo: { light: 90 } } },
   { ...OUTPOST, id: 'dunmore', name: 'Dunmore', ...polar(240, 620), level: 2, seed: 33,
     aliens: { crawler: 3, spitter: 2, brute: 0.5 }, reward: { weapon: 'rifle', cores: 60, parts: 2, ammo: { heavy: 90 } } },
   { ...OUTPOST, id: 'kestrel', name: 'Kestrel', ...polar(60, 620), level: 3, seed: 45,
-    aliens: { spitter: 2, flyer: 2, stalker: 1.5 }, reward: { weapon: 'plasma', cores: 90, parts: 3, ammo: { cells: 60 } } },
+    aliens: { spitter: 2, flyer: 2, stalker: 1.5, sentinel: 0.5 }, reward: { weapon: 'plasma', cores: 90, parts: 3, ammo: { cells: 60 } } },
   { ...OUTPOST, id: 'ironvale', name: 'Ironvale', ...polar(300, 620), level: 3, seed: 57,
-    aliens: { brute: 1, stalker: 2, crawler: 3 }, reward: { armor: 100, cores: 90, parts: 4, medkits: 3 } },
+    aliens: { brute: 1, stalker: 2, crawler: 3, bomber: 1, sentinel: 0.5 }, reward: { armor: 100, cores: 90, parts: 4, medkits: 3 } },
   { ...OUTPOST, id: 'brightwater', name: 'Brightwater', ...polar(0, 620), level: 4, seed: 69, quota: 12,
-    aliens: { flyer: 2, brute: 1, stalker: 2, spitter: 2 }, reward: { weapon: 'rocket', cores: 120, parts: 4, ammo: { rockets: 6 } } },
+    aliens: { flyer: 2, brute: 1, stalker: 2, spitter: 2, sentinel: 0.8, bomber: 1 }, reward: { weapon: 'rocket', cores: 120, parts: 4, ammo: { rockets: 6 } } },
+  // The far frontier, out in the alien blight
+  { ...OUTPOST, id: 'cinderfall', name: 'Cinderfall', ...polar(90, 1260), size: 100, level: 4, seed: 81, quota: 14,
+    aliens: { bomber: 2, sentinel: 1, spitter: 2, stalker: 1.5, brute: 0.7 }, reward: { weapon: 'sniper', cores: 150, parts: 5, ammo: { sniper: 20 } } },
+  { ...OUTPOST, id: 'saltmarsh', name: 'Saltmarsh', ...polar(270, 1260), size: 100, level: 4, seed: 93, quota: 14,
+    aliens: { bomber: 2, crawler: 3, sentinel: 1, flyer: 1.5, brute: 0.7 }, reward: { weapon: 'minigun', cores: 150, parts: 5, ammo: { light: 200 } } },
+  { ...OUTPOST, id: 'hollowpeak', name: 'Hollowpeak', ...polar(0, 1300), size: 110, level: 5, seed: 105, quota: 18, maxH: 26,
+    aliens: { brute: 1.2, sentinel: 1.5, stalker: 2, flyer: 2, bomber: 2 }, reward: { armor: 100, cores: 300, parts: 10, grenades: 6, medkits: 4 } },
 ];
 
 function buildHaven(c, world, scene) {
@@ -79,17 +86,25 @@ function buildHaven(c, world, scene) {
   const gateBox = world.addBox(X - 5, 0, Z - S - 0.5, X + 5, 3.2, Z - S + 0.5, 'gate');
 
   addNoteSign(group, world, X + 4.5, Z + 47, -0.4, [
-    'Hey Jack!',
-    'New controls:',
-    '• SHIFT = sprint',
-    '• C = crouch',
+    'Hey Jack! HUGE UPDATE',
+    '• Map is WAY bigger',
+    '• 3 new outposts in the blight',
+    '• XP, levels + kill combos',
+    '• Drop pods fall from the sky',
+    '• 25 hidden relics to find',
+    '• Bombers + Sentinels',
+    '• 4 new side quests',
     '— Charlie',
   ]);
   addNoteSign(group, world, X - 4.5, Z + 47, 0.4, [
-    'TOTAL REDESIGN!',
-    '• New guns + hands',
-    '• New aliens & people',
-    '• Neon city, real cars',
+    'NEW CONTROLS',
+    'SHIFT sprint · C crouch',
+    'Sprint + C = slide',
+    'Right-click = aim / zoom',
+    'G = throw grenade',
+    'SHIFT in a car = nitro',
+    'New guns: sniper (east)',
+    '+ minigun (west)',
     'Go explore! — Charlie',
   ]);
 
@@ -104,41 +119,46 @@ function buildHaven(c, world, scene) {
 
 // Wooden signpost with a written note, facing +z rotated by yaw
 function addNoteSign(group, world, x, z, yaw, lines) {
+  // The sign grows taller to fit however many lines it has
+  const W = 512, H = 50 + lines.length * 46;
   const c = document.createElement('canvas');
-  c.width = 512; c.height = 320;
+  c.width = W; c.height = H;
   const g = c.getContext('2d');
   g.fillStyle = '#c8a46a';
-  g.fillRect(0, 0, 512, 320);
+  g.fillRect(0, 0, W, H);
   g.strokeStyle = '#6b4a24';
   g.lineWidth = 16;
-  g.strokeRect(8, 8, 496, 304);
+  g.strokeRect(8, 8, W - 16, H - 16);
   g.fillStyle = '#2a1a0a';
   g.textAlign = 'center';
   g.textBaseline = 'middle';
   lines.forEach((t, i) => {
-    g.font = i === 0 ? 'bold 52px system-ui, sans-serif' : '40px system-ui, sans-serif';
-    g.fillText(t, 256, 50 + i * 55);
+    // shrink any line that's too wide for the board
+    let size = i === 0 ? 44 : 34;
+    do g.font = `${i === 0 ? 'bold ' : ''}${size--}px system-ui, sans-serif`; while (g.measureText(t).width > W - 48 && size > 16);
+    g.fillText(t, W / 2, 46 + i * 46);
   });
   const tex = new THREE.CanvasTexture(c);
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.anisotropy = 8;
 
+  const bw = 3.2, bh = bw * H / W, by = 1.3 + bh / 2;
   const sign = new THREE.Group();
   const wood = new THREE.MeshLambertMaterial({ color: 0x6b4a24 });
-  const board = new THREE.Mesh(new THREE.BoxGeometry(3.2, 2, 0.12), wood);
-  board.position.y = 2.2;
-  const face = new THREE.Mesh(new THREE.PlaneGeometry(3.2, 2), new THREE.MeshLambertMaterial({ map: tex }));
-  face.position.set(0, 2.2, 0.07);
+  const board = new THREE.Mesh(new THREE.BoxGeometry(bw, bh, 0.12), wood);
+  board.position.y = by;
+  const face = new THREE.Mesh(new THREE.PlaneGeometry(bw, bh), new THREE.MeshLambertMaterial({ map: tex }));
+  face.position.set(0, by, 0.07);
   for (const px of [-1.3, 1.3]) {
-    const post = new THREE.Mesh(new THREE.BoxGeometry(0.15, 2.2, 0.15), wood);
-    post.position.set(px, 1.1, -0.1);
+    const post = new THREE.Mesh(new THREE.BoxGeometry(0.15, 1.4, 0.15), wood);
+    post.position.set(px, 0.7, -0.1);
     sign.add(post);
   }
   sign.add(board, face);
   sign.position.set(x, 0, z);
   sign.rotation.y = yaw;
   group.add(sign);
-  world.addBox(x - 1.6, 0, z - 0.6, x + 1.6, 3.2, z + 0.6, 'wall');
+  world.addBox(x - 1.6, 0, z - 0.6, x + 1.6, 1.3 + bh, z + 0.6, 'wall');
 }
 
 // Square-boundary distance from a city center along a unit direction
@@ -165,6 +185,10 @@ export function buildCities(world, scene) {
     roads.push(roadBetween(ring[i], ring[(i + 1) % ring.length], 0.045));
     roads.push(roadBetween(ring[i], by('metropolis'), 0.05));
   }
+  // frontier roads
+  roads.push(roadBetween(by('cinderfall'), by('kestrel'), 0.045), roadBetween(by('cinderfall'), by('ashfall'), 0.045));
+  roads.push(roadBetween(by('saltmarsh'), by('dunmore'), 0.045), roadBetween(by('saltmarsh'), by('ironvale'), 0.045));
+  roads.push(roadBetween(by('hollowpeak'), by('brightwater'), 0.045));
   game.roads = roads;
   buildRoads(scene, roads);
   return cities;
